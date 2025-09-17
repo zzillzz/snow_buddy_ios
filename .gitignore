@@ -61,8 +61,8 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-Config/Development
-Config/local
-Config/Production
+Config/Development.xcconfig
+Config/local.xcconfig
+Config/Production.xcconfig
 
 .xcconfig
