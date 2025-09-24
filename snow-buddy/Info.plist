@@ -4,11 +4,31 @@
 <dict>
 	<key>CFBundleURLTypes</key>
 	<array>
-		<dict/>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.zzillzz.snowbuddy</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>snow-buddy-app</string>
+            </array>
+		</dict>
 	</array>
     <key>SupabaseURL</key>
     <string>$(SUPABASE_URL)</string>
     <key>SupabaseKey</key>
     <string>$(SUPABASE_KEY)</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.0</string>
+            </dict>
+        </dict>
+    </dict>
 </dict>
 </plist>

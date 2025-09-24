@@ -9,16 +9,17 @@ import SwiftUI
 
 @main
 struct snow_buddyApp: App {
+    
         
     init() {
         let configUrl = SupabaseConfig.anonKey
-        print("Config: \(configUrl)")
     }
     
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppView()
         }
     }
+   
 }
