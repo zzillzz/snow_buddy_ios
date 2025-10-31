@@ -9,32 +9,45 @@ import SwiftUI
 
 struct HomeView: View {
     
+    init() {
+        UITabBar.appearance().unselectedItemTintColor = UIColor(.white)
+    }
+    
     @StateObject private var viewModel = HomeViewModel()
     @State var username = "User"
+    @State private var selectedTab: Int = 1
+    @State private var trackingManager: TrackingManager = TrackingManager()
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
-        VStack {
-            Text("Welcome \(username)")
+        TabView(selection: $selectedTab) {
+            RunListView()
+                .tabItem {
+                    Label("Other", systemImage: "plus")
+                }
+                .tag(0)
+            DashboardView()
+                .environmentObject(trackingManager)
+                .tabItem{
+                    Text("Record")
+                    Image("RunTabImage")
+                }
+                .tag(1)
             
-            Button(action: { viewModel.logOutUser() }) {
-                Text("Log Out")
-                    .foregroundColor(Color.white)
-                    .font(.system(size: 18, weight: .bold, design: .default))
-                    .frame(maxWidth: .infinity, maxHeight: 10)
-            }
-            .padding()
-            .background(ColorConfig.cardinal)
-            .cornerRadius(20)
-            .disabled(viewModel.isLoading)
+            SettingsView()
+                .tabItem {
+                    Label("Setting", systemImage: "gear")
+                }
+                .tag(2)
         }
-        .padding(.horizontal, 40)
-        .task {
-            await viewModel.loadUser() 
-            if let userName = viewModel.user?.username {
-                username = userName
-            }
+        .appBackground()
+        .tint(Color("Primary"))
+        .onAppear {
+            trackingManager.setModelContext(modelContext)
         }
     }
+    
+    
 }
 
 #Preview {

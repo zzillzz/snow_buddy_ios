@@ -6,20 +6,18 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct snow_buddyApp: App {
     
-        
-    init() {
-        let configUrl = SupabaseConfig.anonKey
-    }
-    
-    
     var body: some Scene {
         WindowGroup {
             AppView()
+                .background(Color("Background"))
         }
+        .modelContainer(for: Run.self)
+        
     }
    
 }

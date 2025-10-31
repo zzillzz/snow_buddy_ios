@@ -12,29 +12,50 @@ struct AppView: View {
     @State var isAuthenticated = false
     @StateObject var appViewModel = AppViewModel()
     @State var needsProfileSetup: Bool = false
+    @State var isLoading = true
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         Group {
-            if !isAuthenticated {
+            if isLoading {
+                SplashScreen()
+                    .transition(.opacity)
+            } else if !isAuthenticated {
                 LoginScreen()
+                    .transition(.slideAndFade)
             } else if needsProfileSetup {
                 CompleteProfileView(onFinished: {
-                    needsProfileSetup = false
+                    withAnimation(.easeInOut(duration: 0.6)) {
+                        needsProfileSetup = false
+                    }
                 })
+                .transition(.slideAndFade)
             } else {
                 HomeView()
+                    .transition(.pushUp)
+                    .environment(\.modelContext, modelContext) 
             }
 
         }
         .task {
             for await state in await appViewModel.sendAuthState() {
                 if [.initialSession, .signedIn, .signedOut].contains(state.event) {
+                    withAnimation(.easeInOut(duration: 0.6)){
+                        if let _ = state.session {
+                            isAuthenticated = true
+                            isLoading = false
+                        } else {
+                            isAuthenticated = false
+                            needsProfileSetup = false
+                            isLoading = false
+                        }
+                    }
                     if let session = state.session {
-                        isAuthenticated = true
-                        needsProfileSetup = await appViewModel.hasUsername(id: session.user.id) == false
-                    } else {
-                        isAuthenticated = false
-                        needsProfileSetup = false
+                        let hasNoUsername = await appViewModel.hasUsername(id: session.user.id) == false
+                        withAnimation(.easeInOut(duration: 0.6)){
+                            needsProfileSetup = hasNoUsername
+                            isLoading = false
+                        }
                     }
                 }
             }

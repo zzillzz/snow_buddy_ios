@@ -18,24 +18,18 @@ struct CompleteProfileView: View {
     var body: some View {
         VStack {
             Text("Lets complete you’re profile")
-                .foregroundStyle(ColorConfig.grape)
-                .font(.system(size: 64, weight: .bold, design: .default))
+                .lexendFont(.bold, size: 64)
                 .padding(.bottom)
                 .padding(.top)
-                .padding(.leading, -40)
             
             Text("This is info that people riding with you will be able to see. Feel free to put in a nickname as your username!")
                 .padding(.bottom)
+                .lexendFont(size: 18)
             
             if viewModel.isLoading {
                 ProgressView()
             } else {
-                TextField("username:", text: $username)
-                    .autocapitalization(.none)
-                    .padding()
-                    .background(isFocused ? Color.white : Color.gray.opacity(0.2))
-                    .cornerRadius(20)
-                    .focused($isFocused)
+                CustomTextField(placeholder: "username", text: $username)
                     .animation(.easeIn(duration: 0.1), value: isFocused)
                     .modifier(ShakeEffect(animatableData: CGFloat(attempts)))
                 
@@ -44,9 +38,10 @@ struct CompleteProfileView: View {
             Spacer()
             
             Button(action: viewModel.logUserOut) {
-                Text("Log User out")
+                Text("DEV TOOL: Log User out")
             }
-            Button(action: {
+            
+            CustomButton(title: "Complete Profile", action: {
                 let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else {
                     withAnimation(.default) {
@@ -55,28 +50,12 @@ struct CompleteProfileView: View {
                     return
                 }
                 viewModel.saveUsername(username: username)
-            }) {
-                Text("Complete Profile")
-                    .foregroundColor(Color.white)
-                    .font(.system(size: 18, weight: .bold, design: .default))
-                    .frame(maxWidth: .infinity, maxHeight: 10)
-            }
-            .padding()
-            .background(ColorConfig.cardinal)
-            .cornerRadius(20)
-            .disabled(viewModel.isLoading)
+            })
             .disabled(username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
         }
         .padding(.horizontal, 40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [ColorConfig.white, ColorConfig.wisteria]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .appBackground()
         .onChange(of: viewModel.usernameUpdated, initial: false, { onFinished() })
     }
 }

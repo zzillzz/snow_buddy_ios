@@ -25,6 +25,7 @@ struct ColorConfig {
         static let background = white
         static let surface = white
         static let primaryButton = cardinal
+        static let backround = white
     }
     
 }
