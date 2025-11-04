@@ -9,31 +9,42 @@ import SwiftUI
 
 struct CustomButton: View {
     var title: String
-    var backgroundColor: Color = Color("Primary")
-    var activeBackgroundColor: Color = .red
-        var textColor: Color = .white
-        var cornerRadius: CGFloat = 20
-        var isDisabled: Bool = false
-        var action: () -> Void
-        var isActive: Bool = false
-        
-        var body: some View {
-            Button(action: action) {
-                Text(title)
-                    .foregroundColor(textColor)
-                    .lexendFont(.bold, size: 18)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-            }
-            .padding(.horizontal)
-            .background(isDisabled
-                        ? backgroundColor.opacity(0.5)
-                        : (isActive ? activeBackgroundColor : backgroundColor)
-                    )
-            .cornerRadius(cornerRadius)
-            .disabled(isDisabled)
-            .animation(.easeInOut(duration: 0.2), value: isDisabled)
-            .animation(.easeInOut(duration: 0.2), value: isActive)
+    var style: CustomButtonStyle = .primary
+    var activeBackgroundColor: Color = Color("TertiaryColor")
+    var textColor: Color = .black
+    var cornerRadius: CGFloat = 20
+    var isDisabled: Bool = false
+    var action: () -> Void
+    var isActive: Bool = false
+    
+    private var backgroundColor: Color {
+        switch style {
+        case .primary:
+            return Color("PrimaryColor")
+        case .secondary:
+            return Color("SecondaryColor")
+        case .tertiary:
+            return Color("TertiaryColor")
         }
+    }
+        
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .foregroundColor(textColor)
+                .lexendFont(.bold, size: 18)
+                .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .padding(.horizontal)
+        .background(isDisabled
+                    ? backgroundColor.opacity(0.5)
+                    : (isActive ? activeBackgroundColor : backgroundColor)
+        )
+        .cornerRadius(cornerRadius)
+        .disabled(isDisabled)
+        .animation(.easeInOut(duration: 0.2), value: isDisabled)
+        .animation(.easeInOut(duration: 0.2), value: isActive)
+    }
 }
 
 struct DangerButton: View {
@@ -47,29 +58,39 @@ struct DangerButton: View {
     var isActive: Bool = false
     
     var body: some View {
-            Button(role: .destructive, action: action) {
-                Text(title)
-                    .foregroundColor(textColor)
-                    .lexendFont(.bold, size: 18)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-            }
-            .padding(.horizontal)
-            .background(isDisabled
-                        ? backgroundColor.opacity(0.5)
-                        : (isActive ? activeBackgroundColor : backgroundColor)
-                    )
-            .cornerRadius(cornerRadius)
-            .disabled(isDisabled)
-            .animation(.easeInOut(duration: 0.2), value: isDisabled)
-            .animation(.easeInOut(duration: 0.2), value: isActive)
+        Button(role: .destructive, action: action) {
+            Text(title)
+                .foregroundColor(textColor)
+                .lexendFont(.bold, size: 18)
+                .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .padding(.horizontal)
+        .background(isDisabled
+                    ? backgroundColor.opacity(0.5)
+                    : (isActive ? activeBackgroundColor : backgroundColor)
+        )
+        .cornerRadius(cornerRadius)
+        .disabled(isDisabled)
+        .animation(.easeInOut(duration: 0.2), value: isDisabled)
+        .animation(.easeInOut(duration: 0.2), value: isActive)
         
     }
+}
+
+enum CustomButtonStyle {
+    case primary
+    case secondary
+    case tertiary
 }
 
 
 
 #Preview {
     CustomButton(title: "Login Now", action: {print("Preview Button Pressed")})
+    
+    CustomButton(title: "Login Now", style: .secondary, action: {print("Preview Button Pressed")})
+    
+    CustomButton(title: "Login Now", style: .tertiary, action: {print("Preview Button Pressed")})
     
     DangerButton(title: "Delete Data", action: {print("Delete Button Pressed")})
 }

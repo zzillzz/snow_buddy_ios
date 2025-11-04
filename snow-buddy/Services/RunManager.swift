@@ -15,7 +15,7 @@ class RunManager {
     }
     
     // Save a new run
-        func saveRun(startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double) {
+        func saveRun(startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint] = []) {
             let run = Run(
                 startTime: startTime,
                 endTime: endTime,
@@ -23,7 +23,8 @@ class RunManager {
                 averageSpeed: averageSpeed,
                 startElevation: startElevation,
                 endElevation: endElevation,
-                verticalDescent: verticalDescent
+                verticalDescent: verticalDescent,
+                routePoints: routePoints
             )
             
             modelContext.insert(run)

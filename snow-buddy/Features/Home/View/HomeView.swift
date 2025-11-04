@@ -9,10 +9,6 @@ import SwiftUI
 
 struct HomeView: View {
     
-    init() {
-        UITabBar.appearance().unselectedItemTintColor = UIColor(.white)
-    }
-    
     @StateObject private var viewModel = HomeViewModel()
     @State var username = "User"
     @State private var selectedTab: Int = 1
@@ -23,7 +19,7 @@ struct HomeView: View {
         TabView(selection: $selectedTab) {
             RunListView()
                 .tabItem {
-                    Label("Other", systemImage: "plus")
+                    Label("Runs", systemImage: "plus")
                 }
                 .tag(0)
             DashboardView()
@@ -34,14 +30,20 @@ struct HomeView: View {
                 }
                 .tag(1)
             
+            MapView(trackingManager: trackingManager)
+                .tabItem{
+                    Label("Map", systemImage: "map")
+                }
+            
             SettingsView()
+                .environmentObject(trackingManager)
                 .tabItem {
                     Label("Setting", systemImage: "gear")
                 }
                 .tag(2)
         }
         .appBackground()
-        .tint(Color("Primary"))
+        .tint(Color("TertiaryColor"))
         .onAppear {
             trackingManager.setModelContext(modelContext)
         }

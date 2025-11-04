@@ -20,3 +20,9 @@ extension View {
         self.modifier(CustomBackground())
     }
 }
+
+#Preview {
+    VStack {
+        Color("Background")
+    }
+}

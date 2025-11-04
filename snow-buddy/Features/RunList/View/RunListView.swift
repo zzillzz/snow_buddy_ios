@@ -69,10 +69,10 @@ struct RunCardView: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(Color("Primary").opacity(0.2))
+                        .fill(Color("PrimaryColor").opacity(0.2))
                         .frame(width: 48, height: 48)
                     Image(systemName: "figure.skiing.downhill")
-                        .foregroundColor(Color("Primary"))
+                        .foregroundColor(Color("PrimaryColor"))
                         .font(.system(size: 24))
                 }
                 

@@ -27,10 +27,56 @@ struct StatCard: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color("Primary").opacity(0.2))
+                .fill(Color("PrimaryColor").opacity(0.2))
         )
     }
 }
+
+struct ButtonCard: View {
+    var cardColor: CustomButtonStyle = .primary
+    var image: String = "chevron.right"
+    var height: CGFloat? = nil
+    
+    private var backgroundColor: Color {
+        switch cardColor {
+        case .primary:
+            return Color("PrimaryColor")
+        case .secondary:
+            return Color("SecondaryColor")
+        case .tertiary:
+            return Color("TertiaryColor")
+        }
+    }
+    
+    private var chevronColor: Color {
+        switch cardColor {
+        case .primary:
+            return .black
+        case .secondary:
+            return .white
+        case .tertiary:
+            return .black
+        }
+    }
+    
+    var body: some View {
+        VStack{
+            Image(systemName: image)
+                .foregroundStyle(chevronColor)
+                .bold()
+        }
+        .frame(maxWidth: .leastNormalMagnitude, minHeight: .leastNormalMagnitude)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(backgroundColor)
+        )
+    }
+}
+
 #Preview {
     StatCard(title: "Snowfall", value: "10 cm")
+    ButtonCard(cardColor: .primary)
+    ButtonCard(cardColor: .secondary)
+    ButtonCard(cardColor: .tertiary)
 }

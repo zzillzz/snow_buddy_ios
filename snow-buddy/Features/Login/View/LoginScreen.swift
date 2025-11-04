@@ -19,7 +19,7 @@ struct LoginScreen: View {
                 .padding(.bottom, 40)
             
             Text("Welcome")
-                .foregroundStyle(Color("Primary"))
+                .foregroundStyle(Color("PrimaryColor"))
                 .lexendFont(.bold, size: 40)
             
             Text("Login to your account or create a new one to start tracking your runs")

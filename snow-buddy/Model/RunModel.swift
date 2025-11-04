@@ -6,6 +6,7 @@
 //
 import Foundation
 import SwiftData
+import CoreLocation
 
 @Model
 final class Run {
@@ -18,7 +19,9 @@ final class Run {
     var endElevation: Double
     var verticalDescent: Double
     
-    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double) {
+    var routePoints: [RoutePoint] = []
+    
+    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint] = []) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -27,6 +30,7 @@ final class Run {
         self.startElevation = startElevation
         self.endElevation = endElevation
         self.verticalDescent = verticalDescent
+        self.routePoints = routePoints
     }
     
     var duration: TimeInterval {
@@ -39,6 +43,15 @@ final class Run {
     
     var averageSpeedKmh: Double {
         averageSpeed * 3.6
+    }
+    
+    var distanceInKm: Double {
+        let horizontalDistance = hypot(endElevation - startElevation, averageSpeed * duration)
+        return horizontalDistance / 1000.0
+    }
+    
+    var coordinates: [CLLocationCoordinate2D] {
+        routePoints.map { $0.coordinate }
     }
 }
 
