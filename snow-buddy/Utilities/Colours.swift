@@ -57,3 +57,9 @@ extension Color {
         )
     }
 }
+
+
+func colorForRun(at index: Int) -> Color {
+    let colors: [Color] = [Color("PrimaryColor"), Color("SecondaryColor"), Color("TertiaryColor")]
+    return colors[index % colors.count].opacity(0.7)
+}

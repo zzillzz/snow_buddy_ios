@@ -36,14 +36,15 @@ struct MapView: View {
                     }
                 }
                 .mapStyle(.standard(elevation: .realistic))
+                .mapControls {
+                    MapCompass()
+                    MapPitchToggle()
+                    MapUserLocationButton()
+                }
                 .onAppear {
                     updateCamera(to: coordinate)
                 }
-                .onChange(of: trackingManager.userLocation) { oldValue, newValue in
-                    if let newLocation = newValue {
-                        updateCamera(to: newLocation)
-                    }
-                }
+
                 .ignoresSafeArea()
                 
                 VStack {
@@ -86,14 +87,7 @@ struct MapView: View {
             )
         }
     }
-    
-    private func colorForRun(at index: Int) -> Color {
-        let colors: [Color] = [.primary, .green, .orange, .pink, .cyan, .yellow]
-        return colors[index % colors.count].opacity(0.7)
-    }
 }
-
-// Remove the Equatable extension - not needed anymore
 
 #Preview {
     MapView(trackingManager: TrackingManager())

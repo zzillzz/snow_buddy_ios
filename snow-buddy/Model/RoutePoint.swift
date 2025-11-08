@@ -9,7 +9,8 @@ import Foundation
 import CoreLocation
 
 // Codable wrapper for coordinates
-struct RoutePoint: Codable {
+struct RoutePoint: Codable, Identifiable {
+    var id = UUID()
     var latitude: Double
     var longitude: Double
     var altitude: Double?

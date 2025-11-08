@@ -20,11 +20,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
-                VStack(alignment: .leading) {
-                    Text("Welcome").lexendFont(.extraBold, size: 25)
-                    Text("\(username)!").lexendFont(.extraBold, size: 25)
-                }
-                
+                UserNameHeading(username: username)
                 SpeedTrackingView(trackingManager: trackingManager)
                 Spacer()
                 if let run = lastRun {

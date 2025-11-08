@@ -65,7 +65,8 @@ struct RunCard: View {
             averageSpeed: 10.0, // 36 km/h
             startElevation: 2000,
             endElevation: 1900,
-            verticalDescent: 100
+            verticalDescent: 100,
+            routePoints: []
         ),
         label: "Last Run"
     )

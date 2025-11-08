@@ -19,9 +19,9 @@ final class Run {
     var endElevation: Double
     var verticalDescent: Double
     
-    var routePoints: [RoutePoint] = []
+    var routePoints: [RoutePoint]
     
-    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint] = []) {
+    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint] ) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -52,6 +52,37 @@ final class Run {
     
     var coordinates: [CLLocationCoordinate2D] {
         routePoints.map { $0.coordinate }
+    }
+    
+    var averageSlope: Double {
+        guard verticalDescent > 0 else { return 0 }
+        return atan(verticalDescent / (distanceInKm * 1000)) * 180 / .pi
+    }
+    
+    func computeSpeeds() -> [(time: Date, speed: Double)] {
+        var results: [(Date, Double)] = []
+        
+        let validPoints = routePoints.sorted {
+            ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast)
+        }
+        
+        for i in 1..<validPoints.count {
+            guard
+                let t1 = validPoints[i-1].timestamp,
+                let t2 = validPoints[i].timestamp
+            else { continue }
+            
+            let loc1 = CLLocation(latitude: validPoints[i-1].latitude, longitude: validPoints[i-1].longitude)
+            let loc2 = CLLocation(latitude: validPoints[i].latitude, longitude: validPoints[i].longitude)
+            let distance = loc1.distance(from: loc2) // meters
+            let deltaTime = t2.timeIntervalSince(t1)
+            guard deltaTime > 0 else { continue }
+            
+            let speed = distance / deltaTime // m/s
+            results.append((t2, speed * 3.6)) // convert to km/h
+        }
+        
+        return results
     }
 }
 

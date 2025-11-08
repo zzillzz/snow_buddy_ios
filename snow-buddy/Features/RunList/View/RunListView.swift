@@ -13,197 +13,110 @@ struct RunListView: View {
     @State private var expandedRunId: UUID? = nil
     @Query(sort: \Run.startTime, order: .reverse) private var runs: [Run]
     @Environment(\.modelContext) private var modelContext
-
-    var body: some View {
-        NavigationView {
-            if runs.isEmpty {
-                VStack{
-                    Text("You dont have any runs recorded yet. Start Shredding and see all your runs here!")
-                        .lexendFont(.bold, size: 30)
-                        .multilineTextAlignment(.center)
-                    
-                    // DEBUG BUTTON
-                    Button("Debug: Fetch Runs") {
-                        let runManager = RunManager(modelContext: modelContext)
-                        let fetchedRuns = runManager.fetchAllRuns()
-                        print("🐛 Fetched \(fetchedRuns.count) runs from database")
-                        for run in fetchedRuns {
-                            print("🐛 Run: \(run.id), speed: \(run.topSpeed)")
-                        }
-                    }
-                    .padding()
-                }.appBackground()
-            } else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(runs) { run in
-                            RunCardView(run: run, isExpanded: expandedRunId == run.id)
-                                .onTapGesture {
-                                    withAnimation(.easeInOut) {
-                                        if expandedRunId == run.id {
-                                            expandedRunId = nil
-                                        } else {
-                                            expandedRunId = run.id
-                                        }
-                                    }
-                                }
-                        }
-                        
-                        
-                    }
-                    .padding()
-                }
-                .navigationTitle("Runs")
-                .appBackground()
-            }
-        }
-    }
-}
-
-struct RunCardView: View {
-    let run: Run
-    let isExpanded: Bool
     
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color("PrimaryColor").opacity(0.2))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "figure.skiing.downhill")
-                        .foregroundColor(Color("PrimaryColor"))
-                        .font(.system(size: 24))
+        NavigationStack {
+            VStack(alignment: .leading) {
+                PageHeading(text: "Runs")
+                if runs.isEmpty {
+                    Spacer()
+                    NoRunsView()
+                    Spacer()
+                } else {
+                    RunsView(runs: runs)
                 }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Run \(run.id.uuidString.prefix(4))") // Short ID
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(Color.primary)
-                    Text("Top Speed: \(Int(run.topSpeedKmh)) km/h · Avg Speed: \(Int(run.averageSpeedKmh)) km/h")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.down")
-                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    .foregroundColor(Color.secondary)
-                    .animation(.easeInOut, value: isExpanded)
             }
             .padding()
-            
-            if isExpanded {
-                Divider()
-                    .background(Color.secondary.opacity(0.3))
-                
-                VStack(spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Max Vertical Drop")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color.secondary)
-                            Text("\(Int(run.verticalDescent)) m")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color.primary)
-                        }
-                        Spacer()
-                        VStack(alignment: .leading) {
-                            Text("Distance")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color.secondary)
-                            Text(String(format: "%.2f km", distanceInKm()))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color.primary)
-                        }
-                    }
-                    
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Duration")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color.secondary)
-                            Text(durationString())
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color.primary)
-                        }
-                        Spacer()
-                        VStack(alignment: .leading) {
-                            Text("Time of Day")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color.secondary)
-                            Text(timeString())
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color.primary)
-                        }
-                    }
-                }
-                .padding([.horizontal, .bottom])
-            }
+            .appBackground()
         }
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-        .animation(.easeInOut, value: isExpanded)
-    }
-    
-    private func distanceInKm() -> Double {
-        let horizontalDistance = hypot(run.endElevation - run.startElevation, run.averageSpeed * run.duration)
-        return horizontalDistance / 1000.0
-    }
-    
-    private func durationString() -> String {
-        let totalSeconds = Int(run.duration)
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-    
-    private func timeString() -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: run.startTime)
     }
 }
 
-// Preview
+struct NoRunsView: View {
+    var body: some View {
+        VStack{
+            Text("You dont have any runs recorded yet. Start Shredding and see all your runs here!")
+                .lexendFont(.bold, size: 30)
+                .multilineTextAlignment(.center)
+        }
+    }
+}
+
+struct RunsView: View {
+    var runs: [Run]
+    @State private var selectedRun: Run? = nil
+    
+    // Group runs by date
+    private var groupedRuns: [(date: Date, runs: [Run])] {
+        let calendar = Calendar.current
+        
+        // Group runs by calendar date
+        let grouped = Dictionary(grouping: runs) { run in
+            calendar.startOfDay(for: run.startTime)
+        }
+        
+        // Sort by date (most recent first) and sort runs within each group
+        return grouped.map { (date: $0.key, runs: $0.value.sorted { $0.startTime > $1.startTime }) }
+            .sorted { $0.date > $1.date }
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                ForEach(groupedRuns, id: \.date) { group in
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Date Header
+                        Text(formatDate(group.date))
+                            .lexendFont(.extraBold, size: 20)
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(group.runs, id:\.id) { run in
+                                RunCard(
+                                    run: run,
+                                    buttonCardColor: .tertiary,
+                                    buttonCardImage: "chevron.down"
+                                )
+                                .onTapGesture {
+                                    selectedRun = run
+                                }
+                            }
+                        }
+                        
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+        .sheet(item: $selectedRun) { run in
+            RunDetailSheet(run: run)
+        }
+    }
+    
+    // Format date with relative formatting
+    private func formatDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        
+        if calendar.isDateInToday(date) {
+            return "Today"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE, MMM d, yyyy"
+            return formatter.string(from: date)
+        }
+    }
+}
+
 #Preview {
     let container = try! ModelContainer(
         for: Run.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     
-    let sampleRuns = [
-        Run(
-            startTime: Date().addingTimeInterval(-3600),
-            endTime: Date().addingTimeInterval(-3300),
-            topSpeed: 15.0,
-            averageSpeed: 10.5,
-            startElevation: 2000,
-            endElevation: 1700,
-            verticalDescent: 300
-        ),
-        Run(
-            startTime: Date().addingTimeInterval(-7200),
-            endTime: Date().addingTimeInterval(-6900),
-            topSpeed: 18.5,
-            averageSpeed: 12.0,
-            startElevation: 2000,
-            endElevation: 1650,
-            verticalDescent: 350
-        ),
-        Run(
-            startTime: Date().addingTimeInterval(-10800),
-            endTime: Date().addingTimeInterval(-10500),
-            topSpeed: 20.0,
-            averageSpeed: 13.5,
-            startElevation: 2000,
-            endElevation: 1600,
-            verticalDescent: 400
-        )
-    ]
-    
-    for run in sampleRuns {
+    for run in sampleMockRuns {
         container.mainContext.insert(run)
     }
     
@@ -218,3 +131,30 @@ struct RunCardView: View {
     
     RunListView().modelContainer(container)
 }
+
+
+
+//
+//RunCardView(run: run, isExpanded: expandedRunId == run.id)
+//    .onTapGesture {
+//        withAnimation(.easeInOut) {
+//            if expandedRunId == run.id {
+//                expandedRunId = nil
+//            } else {
+//                expandedRunId = run.id
+//            }
+//        }
+//    }
+
+
+
+// DEBUG BUTTON
+//            Button("Debug: Fetch Runs") {
+//                let runManager = RunManager(modelContext: modelContext)
+//                let fetchedRuns = runManager.fetchAllRuns()
+//                print("🐛 Fetched \(fetchedRuns.count) runs from database")
+//                for run in fetchedRuns {
+//                    print("🐛 Run: \(run.id), speed: \(run.topSpeed)")
+//                }
+//            }
+//            .padding()
