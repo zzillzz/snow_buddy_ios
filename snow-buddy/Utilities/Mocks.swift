@@ -36,7 +36,7 @@ var mockRun: Run {
         routePoints: mockPoints
     )
 }
-//
+
 func createMockRoute() -> [RoutePoint] {
     // Create a simple zigzag pattern for testing
     var points: [RoutePoint] = []
@@ -60,61 +60,7 @@ func createMockRoute() -> [RoutePoint] {
     
     return points
 }
-//
-//
-//
-//var mockRun2: Run {
-//    let startTime = Date().addingTimeInterval(-3600) // 1 hour ago
-//    let endTime = startTime.addingTimeInterval(142) // 2 minutes 22 seconds run
-//    
-//    // Realistic ski run route - Falls Creek, Victoria (or similar resort)
-//    // Simulates a run down a slope with natural curves
-//    var mockPoints: [RoutePoint] = []
-//    
-//    // Starting point at top of run
-//    let startLat = -36.8599
-//    let startLon = 147.2799
-//    let startAlt = 1780.0
-//    
-//    // Create a realistic curved descent
-//    let totalPoints = 45
-//    
-//    for i in 0..<totalPoints {
-//        let progress = Double(i) / Double(totalPoints - 1)
-//        
-//        // Create natural S-curve path (zigzag down the mountain)
-//        let lateralOffset = sin(progress * .pi * 4) * 0.0008 // Natural turns
-//        let forwardProgress = progress * 0.0035 // Move down the slope
-//        
-//        let lat = startLat - forwardProgress + lateralOffset * 0.3
-//        let lon = startLon + forwardProgress + lateralOffset
-//        
-//        // Natural elevation descent with some variation
-//        let baseAltDrop = progress * 245 // Total 245m descent
-//        let altVariation = sin(progress * .pi * 6) * 8 // Small bumps
-//        let alt = startAlt - baseAltDrop + altVariation
-//        
-//        let point = RoutePoint(
-//            latitude: lat,
-//            longitude: lon,
-//            altitude: alt,
-//            timestamp: startTime.addingTimeInterval(progress * 142)
-//        )
-//        mockPoints.append(point)
-//    }
-//    
-//    return Run(
-//        startTime: startTime,
-//        endTime: endTime,
-//        topSpeed: 18.5, // 66.6 km/h - realistic top speed for intermediate skier
-//        averageSpeed: 11.2, // 40.3 km/h - good average
-//        startElevation: startAlt,
-//        endElevation: startAlt - 245,
-//        verticalDescent: 245, // Realistic run descent
-//        routePoints: mockPoints
-//    )
-//}
-//
+
 // Extended mock data for previews with multiple runs
 extension TrackingManager {
     static var preview2: TrackingManager {
@@ -137,87 +83,6 @@ extension TrackingManager {
     }
 }
 
-//var mockRun3: Run {
-//    let startTime = Date().addingTimeInterval(-7200) // 2 hours ago
-//    let endTime = startTime.addingTimeInterval(98) // 1 min 38 sec
-//    
-//    var mockPoints: [RoutePoint] = []
-//    let startLat = -36.8589
-//    let startLon = 147.2809
-//    let startAlt = 1820.0
-//    
-//    let totalPoints = 32
-//    
-//    for i in 0..<totalPoints {
-//        let progress = Double(i) / Double(totalPoints - 1)
-//        let lateralOffset = sin(progress * .pi * 3) * 0.0006
-//        let forwardProgress = progress * 0.0028
-//        
-//        let lat = startLat - forwardProgress + lateralOffset * 0.4
-//        let lon = startLon + forwardProgress + lateralOffset
-//        let alt = startAlt - (progress * 180) + sin(progress * .pi * 5) * 6
-//        
-//        mockPoints.append(RoutePoint(
-//            latitude: lat,
-//            longitude: lon,
-//            altitude: alt,
-//            timestamp: startTime.addingTimeInterval(progress * 98)
-//        ))
-//    }
-//    
-//    return Run(
-//        startTime: startTime,
-//        endTime: endTime,
-//        topSpeed: 22.3, // 80.3 km/h - faster run
-//        averageSpeed: 13.8, // 49.7 km/h
-//        startElevation: startAlt,
-//        endElevation: startAlt - 180,
-//        verticalDescent: 180,
-//        routePoints: mockPoints
-//    )
-//}
-//
-//var mockRun4: Run {
-//    let startTime = Date().addingTimeInterval(-10800) // 3 hours ago
-//    let endTime = startTime.addingTimeInterval(205) // 3 min 25 sec - longer, easier run
-//    
-//    var mockPoints: [RoutePoint] = []
-//    let startLat = -36.8579
-//    let startLon = 147.2819
-//    let startAlt = 1750.0
-//    
-//    let totalPoints = 55
-//    
-//    for i in 0..<totalPoints {
-//        let progress = Double(i) / Double(totalPoints - 1)
-//        let lateralOffset = sin(progress * .pi * 5) * 0.0007
-//        let forwardProgress = progress * 0.004
-//        
-//        let lat = startLat - forwardProgress + lateralOffset * 0.35
-//        let lon = startLon + forwardProgress + lateralOffset
-//        let alt = startAlt - (progress * 310) + sin(progress * .pi * 7) * 10
-//        
-//        mockPoints.append(RoutePoint(
-//            latitude: lat,
-//            longitude: lon,
-//            altitude: alt,
-//            timestamp: startTime.addingTimeInterval(progress * 205)
-//        ))
-//    }
-//    
-//    return Run(
-//        startTime: startTime,
-//        endTime: endTime,
-//        topSpeed: 15.8, // 56.9 km/h - easier cruising run
-//        averageSpeed: 9.5, // 34.2 km/h
-//        startElevation: startAlt,
-//        endElevation: startAlt - 310,
-//        verticalDescent: 310,
-//        routePoints: mockPoints
-//    )
-//}
-//
-//
 let listOfMockRuns = [mockRun2, mockRun3, mockRun4]
 
 
@@ -293,6 +158,18 @@ var mockRun2: Run {
         ))
     }
     
+    let topSpeedIndex = 22
+    let topSpeedProgress = Double(topSpeedIndex) / Double(totalPoints - 1)
+    let topSpeedLateralOffset = cos(topSpeedProgress * .pi * 3) * 0.0007
+    let topSpeedForwardProgress = topSpeedProgress * 0.0040
+    
+    let topSpeedPoint = RoutePoint(
+        latitude: startLat - topSpeedForwardProgress + topSpeedLateralOffset * 0.35,
+        longitude: startLon + topSpeedForwardProgress + topSpeedLateralOffset * 0.8,
+        altitude: startAlt - (topSpeedProgress * 350) + sin(topSpeedProgress * .pi * 7) * 10,
+        timestamp: startTime.addingTimeInterval(topSpeedProgress * 295)
+    )
+    
     return Run(
         startTime: startTime,
         endTime: endTime,
@@ -301,7 +178,8 @@ var mockRun2: Run {
         startElevation: startAlt,
         endElevation: startAlt - 350,
         verticalDescent: 350,
-        routePoints: mockPoints
+        routePoints: mockPoints,
+        topSpeedPoint: topSpeedPoint
     )
 }
 
@@ -333,6 +211,18 @@ var mockRun3: Run {
         ))
     }
     
+    let topSpeedIndex = 26
+    let topSpeedProgress = Double(topSpeedIndex) / Double(totalPoints - 1)
+    let topSpeedLateralOffset = sin(topSpeedProgress * .pi * 5) * 0.0008
+    let topSpeedForwardProgress = topSpeedProgress * 0.0045
+    
+    let topSpeedPoint = RoutePoint(
+        latitude: startLat - topSpeedForwardProgress + topSpeedLateralOffset * 0.4,
+        longitude: startLon + topSpeedForwardProgress + topSpeedLateralOffset,
+        altitude: startAlt - (topSpeedProgress * 400) + sin(topSpeedProgress * .pi * 8) * 12,
+        timestamp: startTime.addingTimeInterval(topSpeedProgress * 285)
+    )
+    
     return Run(
         startTime: startTime,
         endTime: endTime,
@@ -341,7 +231,8 @@ var mockRun3: Run {
         startElevation: startAlt,
         endElevation: startAlt - 400,
         verticalDescent: 400,
-        routePoints: mockPoints
+        routePoints: mockPoints,
+        topSpeedPoint: topSpeedPoint
     )
 }
 
@@ -373,6 +264,18 @@ var mockRun4: Run {
         ))
     }
     
+    let topSpeedIndex = 21
+    let topSpeedProgress = Double(topSpeedIndex) / Double(totalPoints - 1)
+    let topSpeedLateralOffset = sin(topSpeedProgress * .pi * 3.5) * 0.0006
+    let topSpeedForwardProgress = topSpeedProgress * 0.0038
+    
+    let topSpeedPoint = RoutePoint(
+        latitude: startLat - topSpeedForwardProgress + topSpeedLateralOffset * 0.38,
+        longitude: startLon + topSpeedForwardProgress + topSpeedLateralOffset * 0.9,
+        altitude: startAlt - (topSpeedProgress * 350) + sin(topSpeedProgress * .pi * 6) * 9,
+        timestamp: startTime.addingTimeInterval(topSpeedProgress * 310)
+    )
+    
     return Run(
         startTime: startTime,
         endTime: endTime,
@@ -381,7 +284,8 @@ var mockRun4: Run {
         startElevation: startAlt,
         endElevation: startAlt - 350,
         verticalDescent: 350,
-        routePoints: mockPoints
+        routePoints: mockPoints,
+        topSpeedPoint: topSpeedPoint
     )
 }
 

@@ -20,8 +20,9 @@ final class Run {
     var verticalDescent: Double
     
     var routePoints: [RoutePoint]
+    var topSpeedPoint: RoutePoint?
     
-    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint] ) {
+    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint], topSpeedPoint: RoutePoint? = nil ) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -31,6 +32,7 @@ final class Run {
         self.endElevation = endElevation
         self.verticalDescent = verticalDescent
         self.routePoints = routePoints
+        self.topSpeedPoint = topSpeedPoint
     }
     
     var duration: TimeInterval {
@@ -105,4 +107,17 @@ struct DayStats {
     var totalVerticalDescent: Double {
         runs.reduce(0) { $0 + $1.verticalDescent }
     }
+}
+
+
+func printRunStats(run: Run) {
+    run.routePoints.map({ routePoint in
+        print("coordinate: \(routePoint.coordinate)")
+        print("latitude, longitude: \(routePoint.latitude), \(routePoint.longitude)")
+        print("altitude: \(String(describing: routePoint.altitude))")
+        print("timestamp: \(String(describing: routePoint.timestamp))")
+
+    })
+    print(run.routePoints)
+    print(run.topSpeedPoint ?? "no top Speed Point")
 }

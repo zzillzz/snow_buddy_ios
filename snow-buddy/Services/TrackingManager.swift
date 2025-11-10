@@ -33,15 +33,24 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var currentRouteCoordinates: [CLLocationCoordinate2D] = []
     
     // Run detection parameters
-    private var runStartSpeed: Double = 2.0 // m/s (~7 km/h)
-    private var runStopSpeed: Double = 1.0 // m/s (~3.6 km/h)
+    private var runStartSpeed: Double = 3.5 // m/s (~7 km/h)
+    private var runStopSpeed: Double = 1.5 // m/s (~3.6 km/h)
     private var minDescentForRun: Double = 20.0 // meters
     private var stopTimeThreshold: TimeInterval = 30.0 // seconds
+    
+    // NEW: Sustained speed requirements
+    private var sustainedSpeedThreshold: Int = 3 // Number of consecutive readings
+    private var sustainedSpeedCount: Int = 0 // Counter for consecutive high speeds
+    
+    // NEW: Minimum distance requirement
+    private var minDistanceForRun: Double = 50.0 // meters
+    private var runDistance: Double = 0.0 // Track distance within current run
     
     private var runStartTime: Date?
     private var runStartElevation: Double?
     private var runSpeeds: [Double] = []
     private var runTopSpeed: Double = 0
+    private var runTopSpeedLocation: CLLocation?
     private var lastMovementTime: Date = Date()
     private var isInRun = false
     private var lastLocation: CLLocation?
@@ -63,6 +72,7 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         self.locationManager = locationManager
         super.init()
         setupLocationManager()
+        startLocationTracking()
     }
     
     private func setupLocationManager() {
@@ -77,11 +87,17 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.showsBackgroundLocationIndicator = true
 
-        locationManager.distanceFilter = kCLDistanceFilterNone // Update every meter
+        locationManager.distanceFilter = 5 // Update every 5 meter
     }
     
     func setModelContext(_ modelContext: ModelContext) {
         self.runManager = RunManager(modelContext: modelContext)
+    }
+    
+    // New method to start location tracking (called on init)
+    private func startLocationTracking() {
+        locationManager.startUpdatingLocation()
+        print("📍 Started location tracking")
     }
     
     func startRecording() {
@@ -103,9 +119,6 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         lastLocation = nil
         
-        
-        locationManager.startUpdatingLocation()
-        
         print("Started recording run")
     }
     
@@ -117,19 +130,19 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         
         isRecording = false
-        locationManager.stopUpdatingLocation()
         
         print("Stopped recording ski session")
         print("Total runs: \(completedRuns.count)")
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last, isRecording else { return }
+        guard let location = locations.last else { return }
         
         DispatchQueue.main.async {
             self.userLocation = location.coordinate
         }
 
+        guard isRecording else { return }
         
         // Validate location quality
         guard isLocationValid(location) else {
@@ -148,7 +161,6 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             verticalAccuracy: location.verticalAccuracy,
             timestamp: location.timestamp
         )
-        // let smoothedLocation = location
         
         currentElevation = smoothedLocation.altitude
 
@@ -306,6 +318,15 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             return
         }
         
+        // Create RoutePoint for top speed location
+        let topSpeedPoint = runTopSpeedLocation.map { loc in
+            RoutePoint(
+                coordinate: loc.coordinate,
+                altitude: loc.altitude,
+                timestamp: loc.timestamp
+            )
+        }
+        
         let run = Run(
             startTime: startTime,
             endTime: endTime,
@@ -314,7 +335,8 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             startElevation: startElevation,
             endElevation: currentElevation,
             verticalDescent: verticalDescent,
-            routePoints: currentRoutePoints
+            routePoints: currentRoutePoints,
+            topSpeedPoint: topSpeedPoint
         )
         
         completedRuns.append(run)
@@ -337,7 +359,12 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     private func trackRunData(newLocation: CLLocation) {
         runSpeeds.append(currentSpeed)
-        runTopSpeed = max(runTopSpeed, currentSpeed)
+        
+        if currentSpeed > runTopSpeed {
+            runTopSpeed = currentSpeed
+            runTopSpeedLocation = newLocation
+        }
+        
         averageSpeed = runSpeeds.isEmpty ? 0 : runSpeeds.reduce(0, +) / Double(runSpeeds.count)
         
         // Update total top speed across all runs

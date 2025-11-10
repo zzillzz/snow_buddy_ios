@@ -57,6 +57,37 @@ struct RunDetailMapView: View {
                         }
                     }
                 }
+                
+                // Top speed marker
+                if let topSpeedPoint = run.topSpeedPoint {
+                    Annotation("", coordinate: topSpeedPoint.coordinate) {
+                        VStack(spacing: 4) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color("TertiaryColor"))
+                                    .frame(width: 36, height: 36)
+                                Circle()
+                                    .stroke(.white, lineWidth: 2)
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "bolt.fill")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 16, weight: .bold))
+                            }
+                            
+                            // Speed label
+                            Text("\(Int(run.topSpeedKmh)) km/h")
+                                .lexendFont(.bold, size: 15)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color("TertiaryColor"))
+                                )
+                                .shadow(radius: 2)
+                        }
+                    }
+                }
             }
             .mapStyle(selectedMapStyle)
             .mapControls {

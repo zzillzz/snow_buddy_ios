@@ -44,12 +44,9 @@ struct MapView: View {
                 .onAppear {
                     updateCamera(to: coordinate)
                 }
-
-                .ignoresSafeArea()
                 
                 VStack {
                     HStack {
-                        Spacer()
                         Button(action: { showCompletedRuns.toggle() }) {
                             Image(systemName: showCompletedRuns ? "eye.fill" : "eye.slash.fill")
                                 .font(.title3)
@@ -59,11 +56,10 @@ struct MapView: View {
                                 .clipShape(Circle())
                         }
                         .padding()
+                        Spacer()
                     }
                     
                     Spacer()
-                    
-                    
                 }
                 
             } else {
