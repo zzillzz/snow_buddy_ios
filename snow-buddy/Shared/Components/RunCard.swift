@@ -24,7 +24,7 @@ struct RunCard: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text("Distance")
-                        Text("\(Int(run.distanceInKm)) km")
+                        Text("\(Int(run.runDistanceKm)) km")
                             .lexendFont(.bold, size: 20)
                     }
                     Spacer()
@@ -41,7 +41,8 @@ struct RunCard: View {
                             .foregroundStyle(.red)
                     }
                     Spacer()
-                    ButtonCard(cardColor: buttonCardColor, image: buttonCardImage)
+//                    ButtonCard(cardColor: buttonCardColor, image: buttonCardImage)
+                    CardChevron(image: buttonCardImage)
                 }
                 .padding()
                 .background(
@@ -51,6 +52,67 @@ struct RunCard: View {
             }
         }
         .lexendFont(size: 15)
+    }
+}
+
+struct RunCardWithoutBackRound: View {
+    let run: Run
+    var buttonCardColor: CustomButtonStyle = .primary
+    var buttonCardImage: String = "chevron.right"
+    var label: String?
+    var body: some View {
+        VStack(alignment: .trailing) {
+            if let label = label {
+                Text(label)
+                    .lexendFont(size: 15)
+            }
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Distance")
+                    Text("\(Int(run.runDistanceKm)) km")
+                        .lexendFont(.bold, size: 20)
+                }
+                Spacer()
+                VStack(alignment: .leading) {
+                    Text("Average Speed")
+                    Text("\(Int(run.averageSpeed * 3.6)) km/h")
+                        .lexendFont(.bold, size: 20)
+                }
+                Spacer()
+                VStack(alignment: .leading) {
+                    Text("Max Speed")
+                    Text("\(Int(run.topSpeed * 3.6)) km/h")
+                        .lexendFont(.bold, size: 20)
+                        .foregroundStyle(.red)
+                }
+                Spacer()
+                CardChevron(image: buttonCardImage)
+            }
+        }
+    }
+}
+
+struct CardChevron: View {
+    var color: CustomButtonStyle = .primary
+    var image: String = "chevron.right"
+    
+    private var backgroundColor: Color {
+        switch color {
+        case .primary:
+            return Color("PrimaryColor")
+        case .secondary:
+            return Color("SecondaryColor")
+        case .tertiary:
+            return Color("TertiaryColor")
+        }
+    }
+
+    var body: some View {
+        VStack {
+            Image(systemName: image)
+                .foregroundStyle(backgroundColor)
+                .bold()
+        }
     }
 }
 
@@ -70,6 +132,9 @@ struct RunCard: View {
         ),
         label: "Last Run"
     )
+    
+    CardChevron()
+    RunCardWithoutBackRound(run: mockRun1)
 }
 
 

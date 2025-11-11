@@ -17,7 +17,7 @@ struct RunListView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
-                PageHeading(text: "Runs")
+                PageHeading(text: "Run History")
                 if runs.isEmpty {
                     Spacer()
                     NoRunsView()
@@ -65,25 +65,7 @@ struct RunsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 ForEach(groupedRuns, id: \.date) { group in
                     VStack(alignment: .leading, spacing: 12) {
-                        // Date Header
-                        Text(formatDate(group.date))
-                            .lexendFont(.extraBold, size: 20)
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal)
-                        
-                        VStack(spacing: 12) {
-                            ForEach(group.runs, id:\.id) { run in
-                                RunCard(
-                                    run: run,
-                                    buttonCardColor: .tertiary,
-                                    buttonCardImage: "chevron.down"
-                                )
-                                .onTapGesture {
-                                    selectedRun = run
-                                }
-                            }
-                        }
-                        
+                            RunDayCard(runs: group.runs, date: formatDate(group.date))
                     }
                 }
             }
