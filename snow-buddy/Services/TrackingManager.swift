@@ -233,6 +233,11 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if !isInRun {
             if shouldStartRun(location: location) {
                 startNewRun(location: location)
+            } else {
+                // Reset counter if we're not consistently fast
+                if currentSpeed < runStartSpeed {
+                    sustainedSpeedCount = 0
+                }
             }
         } else {
             if currentSpeed > runStopSpeed {
@@ -246,14 +251,31 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func shouldStartRun(location: CLLocation) -> Bool {
-        guard currentSpeed >= runStartSpeed else { return false }
-        
-        if let lastLoc = lastLocation {
-            let elevationChange = lastLoc.altitude - location.altitude
-            return elevationChange > 0
+        guard currentSpeed >= runStartSpeed else {
+            sustainedSpeedCount = 0
+            return false
         }
         
-        return true
+        /*
+        if let lastLoc = lastLocation {
+            let elevationChange = lastLoc.altitude - location.altitude
+            guard elevationChange > 0 else {
+                sustainedSpeedCount = 0
+                return false
+            }
+        }
+         */
+        
+        // Check 3: Sustained speed requirement
+        sustainedSpeedCount += 1
+        
+        if sustainedSpeedCount >= sustainedSpeedThreshold {
+            print("✅ Sustained speed threshold met: \(sustainedSpeedCount) consecutive readings above \(runStartSpeed * 3.6) km/h")
+            return true
+        } else {
+            print("⏱️ Building speed: \(sustainedSpeedCount)/\(sustainedSpeedThreshold) readings")
+            return false
+        }
     }
     
     private func shouldEndRun(location: CLLocation) -> Bool {
@@ -275,7 +297,11 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         runStartElevation = location.altitude
         runSpeeds = [currentSpeed]
         runTopSpeed = currentSpeed
+        runDistance = 0.0 // Reset distance counter
         lastMovementTime = Date()
+        
+        // Reset sustained speed counter
+        sustainedSpeedCount = 0
         
         // Reset route tracking for new run
         currentRoutePoints.removeAll()
@@ -298,25 +324,33 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard let startTime = runStartTime, let startElevation = runStartElevation else { return }
         
         let endTime = Date()
+        let duration = endTime.timeIntervalSince(startTime)
         let averageSpeed = runSpeeds.isEmpty ? 0 : runSpeeds.reduce(0, +) / Double(runSpeeds.count)
         let verticalDescent = max(0, startElevation - currentElevation)
         
-        // Only save runs that meet minimum criteria
-//        guard verticalDescent >= minDescentForRun else {
-//            print("⚠️ Run too short: \(verticalDescent)m descent (min: \(minDescentForRun)m)")
-//            isInRun = false
-//            currentRoutePoints.removeAll()
-//            currentRouteCoordinates.removeAll()
-//            return
-//        }
-        
-        guard endTime.timeIntervalSince(startTime) >= 10.0 else {
-            print("⚠️ Run too short: \(endTime.timeIntervalSince(startTime))s (min: 10s)")
-            isInRun = false
-            currentRoutePoints.removeAll()
-            currentRouteCoordinates.removeAll()
+        // Validation 1: Minimum duration
+        guard duration >= 10.0 else {
+            print("⚠️ Run too short: \(String(format: "%.1f", duration))s (min: 10s)")
+            resetRunState()
             return
         }
+        
+        // Validation 2: Minimum distance (can test in car!)
+        guard runDistance >= minDistanceForRun else {
+            print("⚠️ Run distance too short: \(String(format: "%.1f", runDistance))m (min: \(minDistanceForRun)m)")
+            resetRunState()
+            return
+        }
+        
+        // Validation 3: Minimum descent (comment out for car testing)
+        // Uncomment this when testing on actual slopes:
+        /*
+         guard verticalDescent >= minDescentForRun else {
+         print("⚠️ Run descent too small: \(String(format: "%.1f", verticalDescent))m (min: \(minDescentForRun)m)")
+         resetRunState()
+         return
+         }
+         */
         
         // Create RoutePoint for top speed location
         let topSpeedPoint = runTopSpeedLocation.map { loc in
@@ -335,6 +369,7 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             startElevation: startElevation,
             endElevation: currentElevation,
             verticalDescent: verticalDescent,
+            runDistance: runDistance,
             routePoints: currentRoutePoints,
             topSpeedPoint: topSpeedPoint
         )
@@ -343,18 +378,27 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         runManager?.saveRun(run)
         
         print("🏁 Ended run #\(completedRuns.count)")
-        print("Duration: \(Int(run.duration))s")
-        print("Top speed: \(Int(run.topSpeedKmh)) km/h")
-        print("Avg speed: \(Int(run.averageSpeedKmh)) km/h")
-        print("Vertical descent: \(Int(verticalDescent))m")
-        print("Route points: \(currentRoutePoints.count)")
+        print("⏱️  Duration: \(Int(duration))s")
+        print("🚀 Top speed: \(String(format: "%.1f", runTopSpeed * 3.6)) km/h")
+        print("📊 Avg speed: \(String(format: "%.1f", averageSpeed * 3.6)) km/h")
+        print("📏 Distance: \(String(format: "%.1f", runDistance))m")
+        print("⛰️  Vertical descent: \(String(format: "%.1f", verticalDescent))m")
+        print("📍 Route points: \(currentRoutePoints.count)")
         
         // Reset run tracking
+        resetRunState()
+    }
+    
+    private func resetRunState() {
         isInRun = false
         runStartTime = nil
         runStartElevation = nil
         runSpeeds = []
         runTopSpeed = 0
+        runDistance = 0.0
+        sustainedSpeedCount = 0
+        currentRoutePoints.removeAll()
+        currentRouteCoordinates.removeAll()
     }
     
     private func trackRunData(newLocation: CLLocation) {
@@ -381,13 +425,15 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentRouteCoordinates.append(newLocation.coordinate)
         
         // guard let newLocation = locations.last else { return }
+        // Track distance
         if let last = lastLocation {
             let delta = distance3D(from: last, to: newLocation)
             
             if delta > 0.1 && delta < 50 {
                 totalDistance += delta
+                runDistance += delta // Track per-run distance
             } else if delta >= 50 {
-                print("⚠️ Skipping unrealistic distance jump: \(delta)m")
+                print("⚠️ Skipping unrealistic distance jump: \(String(format: "%.1f", delta))m")
             }
         }
     }
