@@ -126,6 +126,7 @@ var mockRun1: Run {
         startElevation: startAlt,
         endElevation: startAlt - 300,
         verticalDescent: 300,
+        runDistance: 3100, // ~3.1 km
         routePoints: mockPoints
     )
 }
@@ -178,6 +179,7 @@ var mockRun2: Run {
         startElevation: startAlt,
         endElevation: startAlt - 350,
         verticalDescent: 350,
+        runDistance: 3450, // ~3.45 km
         routePoints: mockPoints,
         topSpeedPoint: topSpeedPoint
     )
@@ -231,6 +233,7 @@ var mockRun3: Run {
         startElevation: startAlt,
         endElevation: startAlt - 400,
         verticalDescent: 400,
+        runDistance: 3700, // ~3.7 km
         routePoints: mockPoints,
         topSpeedPoint: topSpeedPoint
     )
@@ -276,6 +279,7 @@ var mockRun4: Run {
         timestamp: startTime.addingTimeInterval(topSpeedProgress * 310)
     )
     
+    let runDistance = 4000.0 // ~4.0 km
     return Run(
         startTime: startTime,
         endTime: endTime,
@@ -284,6 +288,7 @@ var mockRun4: Run {
         startElevation: startAlt,
         endElevation: startAlt - 350,
         verticalDescent: 350,
+        runDistance: runDistance,
         routePoints: mockPoints,
         topSpeedPoint: topSpeedPoint
     )
@@ -325,6 +330,7 @@ var mockRun5: Run {
         startElevation: startAlt,
         endElevation: startAlt - 400,
         verticalDescent: 400,
+        runDistance: 3650, // ~3.65 km
         routePoints: mockPoints
     )
 }
@@ -365,6 +371,7 @@ var mockRun6: Run {
         startElevation: startAlt,
         endElevation: startAlt - 300,
         verticalDescent: 300,
+        runDistance: 3200, // ~3.2 km
         routePoints: mockPoints
     )
 }
@@ -405,6 +412,7 @@ var mockRun7: Run {
         startElevation: startAlt,
         endElevation: startAlt - 400,
         verticalDescent: 400,
+        runDistance: 4100, // ~4.1 km
         routePoints: mockPoints
     )
 }
@@ -445,6 +453,7 @@ var mockRun8: Run {
         startElevation: startAlt,
         endElevation: startAlt - 350,
         verticalDescent: 350,
+        runDistance: 3550, // ~3.55 km
         routePoints: mockPoints
     )
 }
@@ -485,6 +494,7 @@ var mockRun9: Run {
         startElevation: startAlt,
         endElevation: startAlt - 450,
         verticalDescent: 450,
+        runDistance: 4250, // ~4.25 km
         routePoints: mockPoints
     )
 }
@@ -525,6 +535,7 @@ var mockRun10: Run {
         startElevation: startAlt,
         endElevation: startAlt - 300,
         verticalDescent: 300,
+        runDistance: 3400, // ~3.4 km
         routePoints: mockPoints
     )
 }

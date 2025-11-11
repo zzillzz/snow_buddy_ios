@@ -18,11 +18,12 @@ final class Run {
     var startElevation: Double
     var endElevation: Double
     var verticalDescent: Double
+    var runDistance: CLLocationDistance
     
     var routePoints: [RoutePoint]
     var topSpeedPoint: RoutePoint?
     
-    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, routePoints: [RoutePoint], topSpeedPoint: RoutePoint? = nil ) {
+    init(id: UUID = UUID(), startTime: Date, endTime: Date, topSpeed: Double, averageSpeed: Double, startElevation: Double, endElevation: Double, verticalDescent: Double, runDistance: Double = 0, routePoints: [RoutePoint], topSpeedPoint: RoutePoint? = nil ) {
         self.id = id
         self.startTime = startTime
         self.endTime = endTime
@@ -31,6 +32,7 @@ final class Run {
         self.startElevation = startElevation
         self.endElevation = endElevation
         self.verticalDescent = verticalDescent
+        self.runDistance = runDistance
         self.routePoints = routePoints
         self.topSpeedPoint = topSpeedPoint
     }
@@ -47,6 +49,10 @@ final class Run {
         averageSpeed * 3.6
     }
     
+    var runDistanceKm: Double {
+        runDistance * 0.001
+    }
+    
     var distanceInKm: Double {
         let horizontalDistance = hypot(endElevation - startElevation, averageSpeed * duration)
         return horizontalDistance / 1000.0
@@ -58,7 +64,7 @@ final class Run {
     
     var averageSlope: Double {
         guard verticalDescent > 0 else { return 0 }
-        return atan(verticalDescent / (distanceInKm * 1000)) * 180 / .pi
+        return atan(verticalDescent / (runDistanceKm * 1000)) * 180 / .pi
     }
     
     func computeSpeeds() -> [(time: Date, speed: Double)] {

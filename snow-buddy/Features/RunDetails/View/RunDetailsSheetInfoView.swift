@@ -32,7 +32,7 @@ struct RunDetailSheetInfo: View {
                     RunStatItem(
                         icon: "map.fill",
                         title: "Distance",
-                        value: String(format: "%.3f km", run.distanceInKm)
+                        value: String(format: "%.3f km", run.runDistanceKm)
                     )
                     Spacer()
                     RunStatItem(
