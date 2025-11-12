@@ -12,98 +12,131 @@ import SwiftUICore
 import SwiftData
 
 class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    // MARK: - Dependencies
+
     private let locationManager: LocationManagerProtocol
     private var runManager: RunManager?
-    
+
+    private let locationProcessor: LocationProcessor
+    private let runDetectionEngine: RunDetectionEngine
+    private let runSessionManager: RunSessionManager
+    private let logger: Logger?
+
+    // MARK: - Configuration
+
+    let config: TrackingConfiguration
+
+    // MARK: - Published Properties
+
     @Published var userLocation: CLLocationCoordinate2D? = nil
-    
     @Published var isRecording = false
-    
+
     @Published var currentRun: Run?
     @Published var completedRuns: [Run] = []
-    
+
     @Published var currentSpeed: Double = 0
     @Published var currentElevation: Double = 0
-    
+
     @Published var totalDistance: CLLocationDistance = 0.0
     @Published var averageSpeed: Double = 0
     @Published var topSpeed: Double = 0
-    
+
     @Published var currentRoutePoints: [RoutePoint] = []
     @Published var currentRouteCoordinates: [CLLocationCoordinate2D] = []
+
+    // MARK: - Private State
+
+    private var lastProcessedLocation: ProcessedLocation?
     
-    // Run detection parameters
-    private var runStartSpeed: Double = 3.5 // m/s (~7 km/h)
-    private var runStopSpeed: Double = 1.5 // m/s (~3.6 km/h)
-    private var minDescentForRun: Double = 20.0 // meters
-    private var stopTimeThreshold: TimeInterval = 30.0 // seconds
-    
-    // NEW: Sustained speed requirements
-    private var sustainedSpeedThreshold: Int = 3 // Number of consecutive readings
-    private var sustainedSpeedCount: Int = 0 // Counter for consecutive high speeds
-    
-    // NEW: Minimum distance requirement
-    private var minDistanceForRun: Double = 50.0 // meters
-    private var runDistance: Double = 0.0 // Track distance within current run
-    
-    private var runStartTime: Date?
-    private var runStartElevation: Double?
-    private var runSpeeds: [Double] = []
-    private var runTopSpeed: Double = 0
-    private var runTopSpeedLocation: CLLocation?
-    private var lastMovementTime: Date = Date()
-    private var isInRun = false
-    private var lastLocation: CLLocation?
-    
-    private var speedHistory: [Double] = []
-    private let speedSmoothingWindow = 5
-    
-    private var kalmanLat = KalmanFilter()
-    private var kalmanLon = KalmanFilter()
-    private var kalmanAlt = KalmanFilter()
-    
-    // Default initializer uses real CLLocationManager
+    // MARK: - Initialization
+
+    // Default initializer uses real CLLocationManager and default config
     convenience override init() {
-        self.init(locationManager: CLLocationManager())
+        self.init(
+            locationManager: CLLocationManager(),
+            config: .default
+        )
     }
-    
+
     // Dependency injection initializer for testing
-    init(locationManager: LocationManagerProtocol) {
+    init(
+        locationManager: LocationManagerProtocol,
+        config: TrackingConfiguration = .default,
+        logger: Logger? = nil
+    ) {
         self.locationManager = locationManager
+        self.config = config
+
+        // Initialize logger from config if not provided
+        if let logger = logger {
+            self.logger = logger
+        } else if config.logging.isEnabled {
+            self.logger = ConsoleLogger(
+                isEnabled: config.logging.isEnabled,
+                minimumLevel: config.logging.minimumLevel,
+                includeMetadata: config.logging.includeMetadata,
+                includeTimestamp: config.logging.includeTimestamp
+            )
+        } else {
+            self.logger = nil
+        }
+
+        // Initialize components with configuration
+        self.locationProcessor = LocationProcessor(
+            config: config.locationFiltering,
+            speedConfig: config.speedSmoothing,
+            logger: self.logger
+        )
+        self.runDetectionEngine = RunDetectionEngine(
+            config: config.runDetection,
+            logger: self.logger
+        )
+        self.runSessionManager = RunSessionManager(
+            config: config.validation,
+            logger: self.logger
+        )
+
         super.init()
+
         setupLocationManager()
         startLocationTracking()
     }
-    
+
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization()
         locationManager.requestAlwaysAuthorization()
 
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.activityType = .other
-
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.showsBackgroundLocationIndicator = true
-
-        locationManager.distanceFilter = 5 // Update every 5 meter
+        // Use location processor to configure
+        locationProcessor.configureLocationManager(locationManager)
     }
-    
+
     func setModelContext(_ modelContext: ModelContext) {
         self.runManager = RunManager(modelContext: modelContext)
+        if let runManager = runManager {
+            runSessionManager.setRunManager(runManager)
+        }
     }
-    
+
     // New method to start location tracking (called on init)
     private func startLocationTracking() {
         locationManager.startUpdatingLocation()
-        print("📍 Started location tracking")
+        logger?.debug("System", "Location tracking started", metadata: nil)
     }
     
+    // MARK: - Recording Control
+
     func startRecording() {
         guard !isRecording else { return }
-        
+
         isRecording = true
+
+        // Reset all state
+        runSessionManager.resetSession()
+        runDetectionEngine.reset()
+        locationProcessor.reset()
+
+        // Reset published properties
         currentRoutePoints.removeAll()
         currentRouteCoordinates.removeAll()
         completedRuns = []
@@ -111,365 +144,170 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentSpeed = 0.0
         averageSpeed = 0.0
         topSpeed = 0.0
-        speedHistory = []
-        
-        kalmanLat.reset()
-        kalmanLon.reset()
-        kalmanAlt.reset()
-        
-        lastLocation = nil
-        
-        print("Started recording run")
+
+        lastProcessedLocation = nil
+
+        TrackingEvent.sessionStarted(config: "default").log(with: logger)
     }
-    
+
     func stopRecording() {
         guard isRecording else { return }
-        
-        if isInRun {
-            endCurrentRun()
+
+        // End active run if any
+        if runSessionManager.hasActiveRun {
+            if let run = runSessionManager.endCurrentRun() {
+                completedRuns.append(run)
+            }
         }
-        
+
         isRecording = false
-        
-        print("Stopped recording ski session")
-        print("Total runs: \(completedRuns.count)")
+
+        TrackingEvent.sessionStopped(runCount: completedRuns.count).log(with: logger)
     }
     
+    // MARK: - Location Manager Delegate
+
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        
+        guard let rawLocation = locations.last else { return }
+
+        // Always update user location
         DispatchQueue.main.async {
-            self.userLocation = location.coordinate
+            self.userLocation = rawLocation.coordinate
         }
 
         guard isRecording else { return }
-        
-        // Validate location quality
-        guard isLocationValid(location) else {
-            print("⚠️ Skipping invalid location")
+
+        // Process location through filters
+        guard let processedLocation = locationProcessor.process(rawLocation) else {
+            // Location processor already logged why it was filtered
             return
         }
-        
-        let filteredLat = kalmanLat.filter(location.coordinate.latitude)
-        let filteredLon = kalmanLon.filter(location.coordinate.longitude)
-        let filteredAlt = kalmanAlt.filter(location.altitude)
-        
-        let smoothedLocation = CLLocation(
-            coordinate: CLLocationCoordinate2D(latitude: filteredLat, longitude: filteredLon),
-            altitude: filteredAlt,
-            horizontalAccuracy: location.horizontalAccuracy,
-            verticalAccuracy: location.verticalAccuracy,
-            timestamp: location.timestamp
-        )
-        
-        currentElevation = smoothedLocation.altitude
 
-        if let last = lastLocation {
-            let dt = smoothedLocation.timestamp.timeIntervalSince(last.timestamp)
-            if dt > 0.1 {
-                // currentSpeed = max(0, distance / dt)
-                currentSpeed = calculateSmoothedSpeed(from: last, to: smoothedLocation)
-                print("📍 Speed: \(String(format: "%.1f", currentSpeed * 3.6)) km/h | Distance: \(String(format: "%.1f", totalDistance))m | Elevation: \(String(format: "%.1f", currentElevation))m")
-            }
+        // Update current elevation
+        currentElevation = processedLocation.altitude
+
+        // Calculate speed if we have a previous location
+        if let lastLoc = lastProcessedLocation {
+            currentSpeed = locationProcessor.calculateSpeed(from: lastLoc, to: processedLocation)
+
+            // Log location processing
+            TrackingEvent.locationProcessed(
+                speed: currentSpeed,
+                elevation: currentElevation,
+                latitude: processedLocation.coordinate.latitude,
+                longitude: processedLocation.coordinate.longitude,
+                distance: totalDistance
+            ).log(with: logger)
         } else {
             currentSpeed = 0
         }
-        
-        // currentSpeed = max(0, smoothedLocation.speed)
-        
-        guard currentSpeed >= 0 else { return }
-        
-        detectRunState(location: smoothedLocation)
-        
-        if isInRun {
-            trackRunData(newLocation: smoothedLocation)
-        }
-        
-        lastLocation = smoothedLocation
-    }
-    
-    private func calculateSmoothedSpeed(from: CLLocation, to: CLLocation) -> Double {
-        let distance = from.distance(from: to)
-        let dt = to.timestamp.timeIntervalSince(from.timestamp)
-        
-        guard dt > 0 else { return currentSpeed }
-        
-        let instantSpeed = distance / dt
-        
-        // Add to history and keep only recent readings
-        speedHistory.append(instantSpeed)
-        if speedHistory.count > speedSmoothingWindow {
-            speedHistory.removeFirst()
-        }
-        
-        // Return moving average
-        return speedHistory.reduce(0, +) / Double(speedHistory.count)
-    }
-    
-    private func isLocationValid(_ location: CLLocation) -> Bool {
-        // Filter out inaccurate readings
-        guard location.horizontalAccuracy >= 0 && location.horizontalAccuracy < 50 else {
-            print("⚠️ Poor horizontal accuracy: \(location.horizontalAccuracy)m")
-            return false
-        }
-        
-        guard location.verticalAccuracy >= 0 && location.verticalAccuracy < 50 else {
-            print("⚠️ Poor vertical accuracy: \(location.verticalAccuracy)m")
-            return false
-        }
-        
-        // Filter out old readings
-        guard abs(location.timestamp.timeIntervalSinceNow) < 5.0 else {
-            print("⚠️ Stale location data")
-            return false
-        }
-        
-        return true
-    }
-    
-    private func detectRunState(location: CLLocation) {
-        let now = Date()
-        
-        if !isInRun {
-            if shouldStartRun(location: location) {
-                startNewRun(location: location)
-            } else {
-                // Reset counter if we're not consistently fast
-                if currentSpeed < runStartSpeed {
-                    sustainedSpeedCount = 0
-                }
-            }
-        } else {
-            if currentSpeed > runStopSpeed {
-                lastMovementTime = now
-            } else if now.timeIntervalSince(lastMovementTime) > stopTimeThreshold {
-                //if shouldEndRun(location: location) {
-                endCurrentRun()
-                //}
-            }
-        }
-    }
-    
-    private func shouldStartRun(location: CLLocation) -> Bool {
-        guard currentSpeed >= runStartSpeed else {
-            sustainedSpeedCount = 0
-            return false
-        }
-        
-        /*
-        if let lastLoc = lastLocation {
-            let elevationChange = lastLoc.altitude - location.altitude
-            guard elevationChange > 0 else {
-                sustainedSpeedCount = 0
-                return false
-            }
-        }
-         */
-        
-        // Check 3: Sustained speed requirement
-        sustainedSpeedCount += 1
-        
-        if sustainedSpeedCount >= sustainedSpeedThreshold {
-            print("✅ Sustained speed threshold met: \(sustainedSpeedCount) consecutive readings above \(runStartSpeed * 3.6) km/h")
-            return true
-        } else {
-            print("⏱️ Building speed: \(sustainedSpeedCount)/\(sustainedSpeedThreshold) readings")
-            return false
-        }
-    }
-    
-    private func shouldEndRun(location: CLLocation) -> Bool {
-        // Must have been in run for minimum time
-        guard let startTime = runStartTime, Date().timeIntervalSince(startTime) > 10.0 else { return false }
-        
-        // Check if we've had significant descent
-        guard let startElevation = runStartElevation else { return false }
-        let totalDescent = startElevation - location.altitude
-        
-        return totalDescent >= minDescentForRun
-    }
-    
-    private func startNewRun(location: CLLocation) {
-        print("Starting new run")
-        
-        isInRun = true
-        runStartTime = Date()
-        runStartElevation = location.altitude
-        runSpeeds = [currentSpeed]
-        runTopSpeed = currentSpeed
-        runDistance = 0.0 // Reset distance counter
-        lastMovementTime = Date()
-        
-        // Reset sustained speed counter
-        sustainedSpeedCount = 0
-        
-        // Reset route tracking for new run
-        currentRoutePoints.removeAll()
-        currentRouteCoordinates.removeAll()
-        
-        // Add first point
-        let firstPoint = RoutePoint(
-            coordinate: location.coordinate,
-            altitude: location.altitude,
-            timestamp: location.timestamp
-        )
-        currentRoutePoints.append(firstPoint)
-        currentRouteCoordinates.append(location.coordinate)
 
-        
-        print("Start elevation: \(location.altitude)m, Speed: \(currentSpeed * 3.6) km/h")
-    }
-    
-    private func endCurrentRun() {
-        guard let startTime = runStartTime, let startElevation = runStartElevation else { return }
-        
-        let endTime = Date()
-        let duration = endTime.timeIntervalSince(startTime)
-        let averageSpeed = runSpeeds.isEmpty ? 0 : runSpeeds.reduce(0, +) / Double(runSpeeds.count)
-        let verticalDescent = max(0, startElevation - currentElevation)
-        
-        // Validation 1: Minimum duration
-        guard duration >= 10.0 else {
-            print("⚠️ Run too short: \(String(format: "%.1f", duration))s (min: 10s)")
-            resetRunState()
-            return
-        }
-        
-        // Validation 2: Minimum distance (can test in car!)
-        guard runDistance >= minDistanceForRun else {
-            print("⚠️ Run distance too short: \(String(format: "%.1f", runDistance))m (min: \(minDistanceForRun)m)")
-            resetRunState()
-            return
-        }
-        
-        // Validation 3: Minimum descent (comment out for car testing)
-        // Uncomment this when testing on actual slopes:
-        /*
-         guard verticalDescent >= minDescentForRun else {
-         print("⚠️ Run descent too small: \(String(format: "%.1f", verticalDescent))m (min: \(minDescentForRun)m)")
-         resetRunState()
-         return
-         }
-         */
-        
-        // Create RoutePoint for top speed location
-        let topSpeedPoint = runTopSpeedLocation.map { loc in
-            RoutePoint(
-                coordinate: loc.coordinate,
-                altitude: loc.altitude,
-                timestamp: loc.timestamp
-            )
-        }
-        
-        let run = Run(
-            startTime: startTime,
-            endTime: endTime,
-            topSpeed: runTopSpeed,
-            averageSpeed: averageSpeed,
-            startElevation: startElevation,
-            endElevation: currentElevation,
-            verticalDescent: verticalDescent,
-            runDistance: runDistance,
-            routePoints: currentRoutePoints,
-            topSpeedPoint: topSpeedPoint
+        // Process run detection state machine
+        let transition = runDetectionEngine.processReading(
+            location: processedLocation.clLocation,
+            speed: currentSpeed
         )
-        
-        completedRuns.append(run)
-        runManager?.saveRun(run)
-        
-        print("🏁 Ended run #\(completedRuns.count)")
-        print("⏱️  Duration: \(Int(duration))s")
-        print("🚀 Top speed: \(String(format: "%.1f", runTopSpeed * 3.6)) km/h")
-        print("📊 Avg speed: \(String(format: "%.1f", averageSpeed * 3.6)) km/h")
-        print("📏 Distance: \(String(format: "%.1f", runDistance))m")
-        print("⛰️  Vertical descent: \(String(format: "%.1f", verticalDescent))m")
-        print("📍 Route points: \(currentRoutePoints.count)")
-        
-        // Reset run tracking
-        resetRunState()
-    }
-    
-    private func resetRunState() {
-        isInRun = false
-        runStartTime = nil
-        runStartElevation = nil
-        runSpeeds = []
-        runTopSpeed = 0
-        runDistance = 0.0
-        sustainedSpeedCount = 0
-        currentRoutePoints.removeAll()
-        currentRouteCoordinates.removeAll()
-    }
-    
-    private func trackRunData(newLocation: CLLocation) {
-        runSpeeds.append(currentSpeed)
-        
-        if currentSpeed > runTopSpeed {
-            runTopSpeed = currentSpeed
-            runTopSpeedLocation = newLocation
-        }
-        
-        averageSpeed = runSpeeds.isEmpty ? 0 : runSpeeds.reduce(0, +) / Double(runSpeeds.count)
-        
-        // Update total top speed across all runs
-        let currentSessionTop = completedRuns.map { $0.topSpeed }.max() ?? 0
-        topSpeed = max(currentSessionTop, runTopSpeed)
-        
-        // Add route point
-        let routePoint = RoutePoint(
-            coordinate: newLocation.coordinate,
-            altitude: newLocation.altitude,
-            timestamp: newLocation.timestamp
-        )
-        currentRoutePoints.append(routePoint)
-        currentRouteCoordinates.append(newLocation.coordinate)
-        
-        // guard let newLocation = locations.last else { return }
-        // Track distance
-        if let last = lastLocation {
-            let delta = distance3D(from: last, to: newLocation)
-            
-            if delta > 0.1 && delta < 50 {
-                totalDistance += delta
-                runDistance += delta // Track per-run distance
-            } else if delta >= 50 {
-                print("⚠️ Skipping unrealistic distance jump: \(String(format: "%.1f", delta))m")
+
+        handleRunStateTransition(transition, location: processedLocation)
+
+        // Track data if run is active
+        if runSessionManager.hasActiveRun, let lastLoc = lastProcessedLocation {
+            let distance = locationProcessor.distance3D(from: lastLoc.clLocation, to: processedLocation.clLocation)
+
+            // Validate distance is realistic
+            if locationProcessor.isDistanceRealistic(distance) {
+                runSessionManager.updateCurrentRun(
+                    location: processedLocation,
+                    speed: currentSpeed,
+                    distance: distance
+                )
+
+                // Update session totals
+                totalDistance += distance
+
+                // Update published properties from session manager
+                updatePublishedProperties()
+            } else {
+                TrackingEvent.unrealisticDistance(distance: distance).log(with: logger)
             }
         }
+
+        lastProcessedLocation = processedLocation
     }
-    
-    func distance3D(from start: CLLocation, to end: CLLocation) -> CLLocationDistance {
-        // Horizontal distance (already uses Haversine in CLLocation)
-        let horizontal = start.distance(from: end)
-        
-        // Vertical difference
-        let vertical = abs(end.altitude - start.altitude)
-        
-        // 3D distance using Pythagorean theorem
-        let distance3D = sqrt(pow(horizontal, 2) + pow(vertical, 2))
-        
-        return distance3D
-    }
-    
+
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
+        logger?.error("System", "Location error", metadata: ["error": error.localizedDescription])
     }
     
+    // MARK: - State Transition Handling
+
+    private func handleRunStateTransition(_ transition: RunStateTransition, location: ProcessedLocation) {
+        switch transition {
+        case .noChange:
+            break
+
+        case .startedDetecting:
+            // RunDetectionEngine logs this
+            break
+
+        case .runStarted(let startTime, let startElevation):
+            runSessionManager.startNewRun(at: location, startTime: startTime)
+            locationProcessor.resetSpeedHistory()
+            // RunSessionManager logs this
+            break
+
+        case .runUpdated:
+            // Run is still active, no special action needed
+            break
+
+        case .runEnded:
+            if let run = runSessionManager.endCurrentRun() {
+                completedRuns.append(run)
+                updatePublishedProperties()
+            }
+            // RunSessionManager logs this
+            break
+
+        case .detectionReset:
+            // RunDetectionEngine logs this
+            break
+        }
+    }
+
+    private func updatePublishedProperties() {
+        // Sync published properties with session manager state
+        currentRoutePoints = runSessionManager.currentRoutePoints
+        currentRouteCoordinates = runSessionManager.currentRouteCoordinates
+        averageSpeed = runSessionManager.currentRunAverageSpeed
+
+        // Update top speed from both current run and completed runs
+        let sessionTop = runSessionManager.sessionStats.topSpeed
+        let currentTop = runSessionManager.currentRunTopSpeed
+        topSpeed = max(sessionTop, currentTop)
+    }
     
+    // MARK: - Utility Methods
+
+    /// Calculate 3D distance between two locations (kept for backward compatibility)
+    func distance3D(from start: CLLocation, to end: CLLocation) -> CLLocationDistance {
+        return locationProcessor.distance3D(from: start, to: end)
+    }
+
+    // MARK: - Testing/Debug Methods
+
     func simulateRun() {
-        print("🏂 Starting simulate run")
-        print("🏂 runManager exists: \(runManager != nil)")
-        
+        logger?.debug("Debug", "Starting simulate run", metadata: ["has_run_manager": runManager != nil])
+
         if runManager == nil {
-            print("🏂 ERROR: runManager is nil!")
+            logger?.error("Debug", "runManager is nil", metadata: nil)
             return
         }
-        
+
         completedRuns.append(mockRun4)
         runManager?.saveRun(mockRun4)
-        
+
         DispatchQueue.main.async {
-            print("🏂 Run saved, UI should update")
+            self.logger?.debug("Debug", "Simulated run saved", metadata: nil)
         }
     }
 }

@@ -29,8 +29,11 @@ final class TrackingManagerTests: XCTestCase {
         // Create mock location manager
         mockLocationManager = MockLocationManager()
 
-        // Inject mock into tracking manager
-        trackingManager = TrackingManager(locationManager: mockLocationManager)
+        // Inject mock into tracking manager with default config
+        trackingManager = TrackingManager(
+            locationManager: mockLocationManager,
+            config: .default
+        )
         trackingManager.setModelContext(modelContext)
     }
 
