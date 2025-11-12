@@ -31,12 +31,11 @@ struct RunDayCard: View {
     var body: some View {
         VStack(alignment: .leading) {
             VStack {
-
                 HStack {
                     Text(date)
                         .lexendFont(.bold, size: 25)
                     Spacer()
-                    CardChevron(image: "chevron.down")
+                    CardChevron(image: "chevron.down", shouldRotate: $isExpanded)
                 }
                 .padding(.bottom, 15)
                 
@@ -59,8 +58,9 @@ struct RunDayCard: View {
                 }
                 .padding(.trailing, 40)
             }
+            .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.spring()) {
+                withAnimation(.bouncy()) {
                     isExpanded.toggle()
                 }
             }
@@ -69,8 +69,9 @@ struct RunDayCard: View {
             
             if isExpanded {
                 ForEach(runs) { run in
-                    RunCardWithoutBackRound(run: run, buttonCardImage: "chevron.down")
+                    RunCardWithoutBackRound(run: run, buttonCardImage: "chevron.down.circle.fill")
                         .padding(.top, 20)
+                        .contentShape(Rectangle())
                         .onTapGesture {
                             selectedRun = run
                         }

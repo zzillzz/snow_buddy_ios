@@ -7,13 +7,31 @@
 
 import SwiftUI
 import Foundation
+import UniformTypeIdentifiers
+
+struct ShareableRunImage: Transferable {
+    let image: UIImage
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { shareableImage in
+            guard let data = shareableImage.image.pngData() else {
+                throw ShareableRunImageError.conversionFailed
+            }
+            return data
+        }
+    }
+
+    enum ShareableRunImageError: Error {
+        case conversionFailed
+    }
+}
 
 struct RunDetailSheet: View {
     let run: Run
     @Environment(\.dismiss) private var dismiss
-    @State private var shareImage: UIImage?
+    @State private var shareImage: ShareableRunImage?
     @State private var showShareSheet = false
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -21,7 +39,7 @@ struct RunDetailSheet: View {
                 ScrollView {
                 RunDetailMapView(run: run)
                     .frame(height: UIScreen.main.bounds.height * 0.5)
-                
+
                 // Stats section below map
                 RunDetailSheetInfo(run: run)
                 }
@@ -35,45 +53,46 @@ struct RunDetailSheet: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        captureShareableView(run: run)
-                    } label: {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    Button("Print Run Stats") {
-                        printRunStats(run: run)
+                    if let shareImage = shareImage {
+                        ShareLink(
+                            item: shareImage,
+                            preview: SharePreview(
+                                "My Snow Buddy Run",
+                                image: Image(uiImage: shareImage.image)
+                            )
+                        ) {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                    } else {
+                        Button("Export") {
+                            captureShareableView(run: run)
+                        }
                     }
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
-                if let image = shareImage {
-                    ShareSheet(items: [ShareActivityItemSource(image: image, text: "Check out my run! 🎿")])
-                }
+            .onAppear{
+                captureShareableView(run: run)
             }
         }
     }
-    
+
     @MainActor
     private func captureShareableView(run: Run) {
         let view = ShareableRunView(run: run)
-        
-        
-        // Use ImageRenderer for proper SwiftUI rendering with transparency
+
+        // Use ImageRenderer for proper SwiftUI rendering
         let renderer = ImageRenderer(content: view)
-        
+
         // Set scale for high resolution
         renderer.scale = 3.0
-        
-        // Explicitly set transparent background
-        renderer.isOpaque = false
-                
+
+        // Set opaque background for better compatibility with Instagram
+        renderer.isOpaque = true
+
         // Render to UIImage
-        if let uiImage = renderer.uiImage {
-            shareImage = uiImage
-            showShareSheet = true
-        }
+        guard let uiImage = renderer.uiImage else { return }
+
+        shareImage = ShareableRunImage(image: uiImage)
     }
 }
 
