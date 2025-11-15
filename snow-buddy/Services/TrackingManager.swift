@@ -44,9 +44,14 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var currentRoutePoints: [RoutePoint] = []
     @Published var currentRouteCoordinates: [CLLocationCoordinate2D] = []
 
+    // Phase 3: GPS Quality
+    @Published var gpsQuality: GPSQuality = .good
+    @Published var shouldWaitForBetterGPS: Bool = false
+
     // MARK: - Private State
 
     private var lastProcessedLocation: ProcessedLocation?
+    private var lastAccuracyUpdate: Date?
     
     // MARK: - Initialization
 
@@ -54,7 +59,7 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     convenience override init() {
         self.init(
             locationManager: CLLocationManager(),
-            config: .default
+            config: .carTesting // MARK: CHANGE CONFIG HERE!!!!
         )
     }
 
@@ -85,6 +90,10 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         self.locationProcessor = LocationProcessor(
             config: config.locationFiltering,
             speedConfig: config.speedSmoothing,
+            adaptiveAccuracyConfig: config.adaptiveAccuracy,
+            hybridSpeedConfig: config.hybridSpeed,
+            gpsQualityConfig: config.gpsQuality,
+            adaptiveKalmanConfig: config.adaptiveKalman,
             logger: self.logger
         )
         self.runDetectionEngine = RunDetectionEngine(
@@ -178,7 +187,7 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard isRecording else { return }
 
         // Process location through filters
-        guard let processedLocation = locationProcessor.process(rawLocation) else {
+        guard let processedLocation = locationProcessor.process(rawLocation, currentSpeed: currentSpeed) else {
             // Location processor already logged why it was filtered
             return
         }
@@ -198,9 +207,15 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: processedLocation.coordinate.longitude,
                 distance: totalDistance
             ).log(with: logger)
+
+            // Update GPS accuracy periodically (every 10 seconds)
+            updateGPSAccuracyIfNeeded()
         } else {
             currentSpeed = 0
         }
+
+        // Update GPS quality indicators
+        updateGPSQualityIndicators()
 
         // Process run detection state machine
         let transition = runDetectionEngine.processReading(
@@ -284,6 +299,33 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         let sessionTop = runSessionManager.sessionStats.topSpeed
         let currentTop = runSessionManager.currentRunTopSpeed
         topSpeed = max(sessionTop, currentTop)
+    }
+
+    // MARK: - GPS Quality & Accuracy Management
+
+    private func updateGPSAccuracyIfNeeded() {
+        // Only update every 10 seconds
+        if let lastUpdate = lastAccuracyUpdate {
+            if Date().timeIntervalSince(lastUpdate) < 10.0 {
+                return
+            }
+        }
+
+        locationProcessor.updateAccuracyIfNeeded(
+            manager: locationManager,
+            currentSpeed: currentSpeed
+        )
+
+        lastAccuracyUpdate = Date()
+    }
+
+    private func updateGPSQualityIndicators() {
+        if let quality = locationProcessor.getCurrentGPSQuality() {
+            DispatchQueue.main.async {
+                self.gpsQuality = quality
+                self.shouldWaitForBetterGPS = self.locationProcessor.shouldWarnAboutGPSQuality()
+            }
+        }
     }
     
     // MARK: - Utility Methods

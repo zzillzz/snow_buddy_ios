@@ -51,28 +51,64 @@ class LocationProcessor {
     let speedConfig: SpeedSmoothingConfig
     private let logger: Logger?
 
+    // Enhanced components
+    private let adaptiveAccuracyManager: AdaptiveAccuracyManager?
+    private let hybridSpeedCalculator: HybridSpeedCalculator?
+    private let gpsQualityMonitor: GPSQualityMonitor?
+
+    // Kalman filters (adaptive if available, standard otherwise)
     private let kalmanLat: KalmanFilter
     private let kalmanLon: KalmanFilter
     private let kalmanAlt: KalmanFilter
 
     private var speedHistory: [Double] = []
     private var lastLocation: CLLocation?
+    private var lastSpeedSource: SpeedSource?
 
     // MARK: - Initialization
 
     init(
         config: LocationFilteringConfig = .default,
         speedConfig: SpeedSmoothingConfig = .default,
+        adaptiveAccuracyConfig: AdaptiveAccuracyConfig? = nil,
+        hybridSpeedConfig: HybridSpeedConfig? = nil,
+        gpsQualityConfig: GPSQualityConfig? = nil,
+        adaptiveKalmanConfig: AdaptiveKalmanConfig? = nil,
         logger: Logger? = nil
     ) {
         self.config = config
         self.speedConfig = speedConfig
         self.logger = logger
 
-        // Initialize Kalman filters
-        self.kalmanLat = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
-        self.kalmanLon = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
-        self.kalmanAlt = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
+        // Initialize enhanced components if configs provided
+        if let accuracyConfig = adaptiveAccuracyConfig {
+            self.adaptiveAccuracyManager = AdaptiveAccuracyManager(config: accuracyConfig, logger: logger)
+        } else {
+            self.adaptiveAccuracyManager = nil
+        }
+
+        if let speedConfig = hybridSpeedConfig {
+            self.hybridSpeedCalculator = HybridSpeedCalculator(config: speedConfig, logger: logger)
+        } else {
+            self.hybridSpeedCalculator = nil
+        }
+
+        if let qualityConfig = gpsQualityConfig {
+            self.gpsQualityMonitor = GPSQualityMonitor(config: qualityConfig, logger: logger)
+        } else {
+            self.gpsQualityMonitor = nil
+        }
+
+        // Initialize Kalman filters (adaptive if config provided)
+        if let kalmanConfig = adaptiveKalmanConfig {
+            self.kalmanLat = AdaptiveKalmanFilter(config: kalmanConfig, logger: logger)
+            self.kalmanLon = AdaptiveKalmanFilter(config: kalmanConfig, logger: logger)
+            self.kalmanAlt = AdaptiveKalmanFilter(config: kalmanConfig, logger: logger)
+        } else {
+            self.kalmanLat = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
+            self.kalmanLon = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
+            self.kalmanAlt = KalmanFilter(processNoise: 0.125, measurementNoise: 1.0)
+        }
     }
 
     // MARK: - Public Interface
@@ -122,16 +158,45 @@ class LocationProcessor {
     }
 
     /// Process a raw location through Kalman filters
-    func process(_ location: CLLocation) -> ProcessedLocation? {
+    func process(_ location: CLLocation, currentSpeed: Double = 0) -> ProcessedLocation? {
         // Validate first
         guard case .valid = validate(location) else {
             return nil
         }
 
-        // Apply Kalman filtering
-        let filteredLat = kalmanLat.filter(location.coordinate.latitude)
-        let filteredLon = kalmanLon.filter(location.coordinate.longitude)
-        let filteredAlt = kalmanAlt.filter(location.altitude)
+        // Update GPS quality monitor
+        gpsQualityMonitor?.updateQuality(from: location)
+
+        // Apply Kalman filtering (adaptive if available)
+        let filteredLat: Double
+        let filteredLon: Double
+        let filteredAlt: Double
+
+        if let adaptiveLat = kalmanLat as? AdaptiveKalmanFilter,
+           let adaptiveLon = kalmanLon as? AdaptiveKalmanFilter,
+           let adaptiveAlt = kalmanAlt as? AdaptiveKalmanFilter {
+            // Use adaptive filtering
+            filteredLat = adaptiveLat.filterAdaptive(
+                location.coordinate.latitude,
+                accuracy: location.horizontalAccuracy,
+                speed: currentSpeed
+            )
+            filteredLon = adaptiveLon.filterAdaptive(
+                location.coordinate.longitude,
+                accuracy: location.horizontalAccuracy,
+                speed: currentSpeed
+            )
+            filteredAlt = adaptiveAlt.filterAdaptive(
+                location.altitude,
+                accuracy: location.verticalAccuracy,
+                speed: currentSpeed
+            )
+        } else {
+            // Use standard filtering
+            filteredLat = kalmanLat.filter(location.coordinate.latitude)
+            filteredLon = kalmanLon.filter(location.coordinate.longitude)
+            filteredAlt = kalmanAlt.filter(location.altitude)
+        }
 
         return ProcessedLocation(
             coordinate: CLLocationCoordinate2D(latitude: filteredLat, longitude: filteredLon),
@@ -144,11 +209,6 @@ class LocationProcessor {
 
     /// Calculate speed from two locations with smoothing
     func calculateSpeed(from: ProcessedLocation, to: ProcessedLocation) -> Double {
-        let distance = distance3D(
-            from: from.clLocation,
-            to: to.clLocation
-        )
-
         let dt = to.timestamp.timeIntervalSince(from.timestamp)
 
         guard dt >= speedConfig.minTimeDelta else {
@@ -156,7 +216,22 @@ class LocationProcessor {
             return speedHistory.last ?? 0.0
         }
 
-        let instantSpeed = max(0, distance / dt)
+        let instantSpeed: Double
+
+        // Use hybrid speed calculator if available
+        if let hybridCalculator = hybridSpeedCalculator {
+            let (speed, source) = hybridCalculator.calculateSpeed(
+                currentLocation: to.clLocation,
+                previousLocation: from.clLocation
+            )
+            instantSpeed = speed
+            lastSpeedSource = source
+        } else {
+            // Fallback to calculated speed
+            let distance = distance3D(from: from.clLocation, to: to.clLocation)
+            instantSpeed = max(0, distance / dt)
+            lastSpeedSource = .calculated
+        }
 
         // Add to smoothing window
         speedHistory.append(instantSpeed)
@@ -200,11 +275,56 @@ class LocationProcessor {
         kalmanAlt.reset()
         speedHistory.removeAll()
         lastLocation = nil
+        gpsQualityMonitor?.reset()
+        hybridSpeedCalculator?.resetStatistics()
     }
 
     /// Reset speed history (e.g., when starting a new run)
     func resetSpeedHistory() {
         speedHistory.removeAll()
+    }
+
+    // MARK: - Enhanced Features Access
+
+    /// Get current GPS quality
+    func getCurrentGPSQuality() -> GPSQuality? {
+        return gpsQualityMonitor?.getQuality()
+    }
+
+    /// Check if user should be warned about poor GPS
+    func shouldWarnAboutGPSQuality() -> Bool {
+        return gpsQualityMonitor?.shouldWarnUser() ?? false
+    }
+
+    /// Get GPS quality description for UI
+    func getGPSQualityDescription() -> String? {
+        return gpsQualityMonitor?.qualityDescription()
+    }
+
+    /// Get last speed source (GPS vs calculated)
+    func getLastSpeedSource() -> SpeedSource? {
+        return lastSpeedSource
+    }
+
+    /// Update GPS accuracy based on conditions
+    func updateAccuracyIfNeeded(
+        manager: LocationManagerProtocol,
+        currentSpeed: Double,
+        batteryLevel: Float? = nil,
+        isPluggedIn: Bool? = nil
+    ) {
+        guard let accuracyManager = adaptiveAccuracyManager else { return }
+
+        let newAccuracy = accuracyManager.determineAccuracy(
+            speed: currentSpeed,
+            batteryLevel: batteryLevel,
+            isPluggedIn: isPluggedIn
+        )
+
+        if accuracyManager.shouldUpdateAccuracy(newAccuracy: newAccuracy) {
+            manager.desiredAccuracy = newAccuracy
+            accuracyManager.updateCurrentAccuracy(newAccuracy)
+        }
     }
 
     // MARK: - Location Manager Configuration Helper

@@ -17,12 +17,83 @@ struct TrackingConfiguration {
     var speedSmoothing: SpeedSmoothingConfig
     var logging: LoggingConfig
 
+    // Phase 3: Enhanced location processing
+    var adaptiveAccuracy: AdaptiveAccuracyConfig?
+    var hybridSpeed: HybridSpeedConfig?
+    var gpsQuality: GPSQualityConfig?
+    var adaptiveKalman: AdaptiveKalmanConfig?
+
     static let `default` = TrackingConfiguration(
         runDetection: .default,
         validation: .default,
         locationFiltering: .default,
         speedSmoothing: .default,
-        logging: .default
+        logging: .default,
+        adaptiveAccuracy: .default,
+        hybridSpeed: .default,
+        gpsQuality: .default,
+        adaptiveKalman: .default
+    )
+
+    /// High accuracy configuration with all enhancements
+    static let highAccuracy = TrackingConfiguration(
+        runDetection: .default,
+        validation: .strict,
+        locationFiltering: .highAccuracy,
+        speedSmoothing: .responsive,
+        logging: .default,
+        adaptiveAccuracy: .highAccuracy,
+        hybridSpeed: .gpsPreferred,
+        gpsQuality: .strict,
+        adaptiveKalman: .default
+    )
+
+    /// Battery saver configuration
+    static let batterySaver = TrackingConfiguration(
+        runDetection: .default,
+        validation: .default,
+        locationFiltering: .batterySaver,
+        speedSmoothing: .smooth,
+        logging: .production,
+        adaptiveAccuracy: .batterySaver,
+        hybridSpeed: .calculatedOnly,
+        gpsQuality: .lenient,
+        adaptiveKalman: .fixed
+    )
+
+    /// Car testing configuration - NO descent requirement, works on flat roads
+    static let carTesting = TrackingConfiguration(
+        runDetection: .carTesting,      // Higher speed threshold (18 km/h)
+        validation: .carTesting,         // NO descent requirement
+        locationFiltering: .default,
+        speedSmoothing: .default,
+        logging: .default,              // Full logging for debugging
+        adaptiveAccuracy: .default,
+        hybridSpeed: .gpsPreferred,     // Prefer GPS speed at car speeds
+        gpsQuality: .default,
+        adaptiveKalman: .default
+    )
+
+    /// Super lenient testing - for debugging in parking lots
+    static let superLenient = TrackingConfiguration(
+        runDetection: RunDetectionConfig(
+            startSpeedThreshold: 2.0,    // ~7 km/h - very slow
+            stopSpeedThreshold: 0.5,     // ~2 km/h
+            sustainedReadingsRequired: 2, // Only 2 readings needed
+            stopTimeThreshold: 30.0
+        ),
+        validation: RunValidationConfig(
+            minDuration: 3.0,            // Only 3 seconds
+            minDistance: 30.0,           // Only 30 meters
+            minDescent: nil              // No descent
+        ),
+        locationFiltering: .default,
+        speedSmoothing: .default,
+        logging: .default,
+        adaptiveAccuracy: .default,
+        hybridSpeed: .default,
+        gpsQuality: .lenient,
+        adaptiveKalman: .default
     )
 }
 
@@ -50,7 +121,7 @@ struct RunDetectionConfig {
 
     /// Configuration for testing in a car (higher speeds, no descent required)
     static let carTesting = RunDetectionConfig(
-        startSpeedThreshold: 5.0,      // ~18 km/h
+        startSpeedThreshold: 4.2,      // ~15 km/h
         stopSpeedThreshold: 2.0,       // ~7.2 km/h
         sustainedReadingsRequired: 3,
         stopTimeThreshold: 15.0

@@ -9,12 +9,12 @@ import CoreLocation
 import Foundation
 
 class KalmanFilter {
-    private var q: Double        // process noise
-    private var r: Double        // measurement noise
-    private var x: Double = 0.0  // value
-    private var p: Double = 1.0  // estimation error covariance
-    private var k: Double = 0.0  // kalman gain
-    private var isInitialized = false
+     var q: Double        // process noise
+     var r: Double        // measurement noise
+     var x: Double = 0.0  // value
+     var p: Double = 1.0  // estimation error covariance
+     var k: Double = 0.0  // kalman gain
+     var isInitialized = false
     
     init(processNoise: Double = 0.125, measurementNoise: Double = 1.0) {
         self.q = processNoise
