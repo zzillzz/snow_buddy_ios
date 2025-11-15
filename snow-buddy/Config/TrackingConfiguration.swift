@@ -194,8 +194,8 @@ struct LocationFilteringConfig {
         maxHorizontalAccuracy: 50.0,
         maxVerticalAccuracy: 50.0,
         maxLocationAge: 5.0,
-        maxDistanceJump: 50.0,
-        minDistanceChange: 0.1,
+        maxDistanceJump: 50.0,  // ~150 km/h for 1 second - catches most GPS jumps
+        minDistanceChange: 0.5,  // Increased from 0.1 to reduce noise
         distanceFilter: 5.0
     )
 
@@ -229,21 +229,29 @@ struct SpeedSmoothingConfig {
     /// Minimum time delta between readings for speed calculation (seconds)
     var minTimeDelta: TimeInterval
 
+    /// Maximum realistic speed for skiing/snowboarding (m/s) - filters GPS errors
+    /// Typical max speeds: Snowboarding ~100 km/h, Skiing ~130 km/h
+    /// Default: 150 km/h (41.7 m/s) for safety margin
+    var maxRealisticSpeed: Double?
+
     static let `default` = SpeedSmoothingConfig(
         windowSize: 5,
-        minTimeDelta: 0.1
+        minTimeDelta: 0.1,
+        maxRealisticSpeed: 41.7  // 150 km/h
     )
 
     /// More responsive for racing
     static let responsive = SpeedSmoothingConfig(
         windowSize: 3,
-        minTimeDelta: 0.05
+        minTimeDelta: 0.05,
+        maxRealisticSpeed: 41.7  // 150 km/h
     )
 
     /// Smoother for casual tracking
     static let smooth = SpeedSmoothingConfig(
         windowSize: 10,
-        minTimeDelta: 0.2
+        minTimeDelta: 0.2,
+        maxRealisticSpeed: 41.7  // 150 km/h
     )
 }
 

@@ -43,7 +43,7 @@ struct HomeView: View {
                 .tag(2)
         }
         .appBackground()
-        .tint(Color("TertiaryColor"))
+        .tint(Color("SecondaryColor"))
         .onAppear {
             trackingManager.setModelContext(modelContext)
         }

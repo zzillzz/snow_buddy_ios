@@ -39,6 +39,13 @@ class ActiveRun {
     // MARK: - Update Methods
 
     func addLocation(_ location: ProcessedLocation, speed: Double, distance: Double) {
+        // Prevent duplicate timestamps - check if last point has same timestamp
+        if let lastPoint = routePoints.last,
+           lastPoint.timestamp == location.timestamp {
+            // Skip this point - duplicate timestamp
+            return
+        }
+
         // Add route point
         routePoints.append(RoutePoint(
             coordinate: location.coordinate,

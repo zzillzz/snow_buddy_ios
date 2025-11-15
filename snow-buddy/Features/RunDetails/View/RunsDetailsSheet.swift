@@ -69,6 +69,11 @@ struct RunDetailSheet: View {
                         }
                     }
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Print Stats") {
+                        printRunStats(run: run)
+                    }
+                }
             }
             .onAppear{
                 captureShareableView(run: run)

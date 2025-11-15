@@ -17,14 +17,14 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager: LocationManagerProtocol
     private var runManager: RunManager?
 
-    private let locationProcessor: LocationProcessor
-    private let runDetectionEngine: RunDetectionEngine
-    private let runSessionManager: RunSessionManager
-    private let logger: Logger?
+    private var locationProcessor: LocationProcessor
+    private var runDetectionEngine: RunDetectionEngine
+    private var runSessionManager: RunSessionManager
+    private var logger: Logger?
 
     // MARK: - Configuration
 
-    let config: TrackingConfiguration
+    @Published var config: TrackingConfiguration
 
     // MARK: - Published Properties
 
@@ -127,6 +127,78 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
+    // MARK: - Configuration Management
+
+    /// Update the tracking configuration dynamically
+    /// - Parameter newConfig: The new configuration to apply
+    /// - Note: This will recreate internal components with the new configuration
+    func updateConfiguration(_ newConfig: TrackingConfiguration) {
+        // Update config
+        self.config = newConfig
+
+        // Update or recreate logger
+        if newConfig.logging.isEnabled {
+            self.logger = ConsoleLogger(
+                isEnabled: newConfig.logging.isEnabled,
+                minimumLevel: newConfig.logging.minimumLevel,
+                includeMetadata: newConfig.logging.includeMetadata,
+                includeTimestamp: newConfig.logging.includeTimestamp
+            )
+        } else {
+            self.logger = nil
+        }
+
+        // Recreate components with new configuration
+        self.locationProcessor = LocationProcessor(
+            config: newConfig.locationFiltering,
+            speedConfig: newConfig.speedSmoothing,
+            adaptiveAccuracyConfig: newConfig.adaptiveAccuracy,
+            hybridSpeedConfig: newConfig.hybridSpeed,
+            gpsQualityConfig: newConfig.gpsQuality,
+            adaptiveKalmanConfig: newConfig.adaptiveKalman,
+            logger: self.logger
+        )
+
+        self.runDetectionEngine = RunDetectionEngine(
+            config: newConfig.runDetection,
+            logger: self.logger
+        )
+
+        self.runSessionManager = RunSessionManager(
+            config: newConfig.validation,
+            logger: self.logger
+        )
+
+        // Reattach run manager if it exists
+        if let runManager = runManager {
+            runSessionManager.setRunManager(runManager)
+        }
+
+        // Reconfigure location manager with new settings
+        locationProcessor.configureLocationManager(locationManager)
+
+        logger?.debug("System", "Configuration updated", metadata: ["config": "\(getCurrentConfigName())"])
+    }
+
+    /// Get a friendly name for the current configuration
+    private func getCurrentConfigName() -> String {
+        if config.runDetection.startSpeedThreshold == TrackingConfiguration.carTesting.runDetection.startSpeedThreshold &&
+           config.validation.minDescent == nil {
+            return "Car Testing"
+        } else if config.runDetection.startSpeedThreshold == TrackingConfiguration.superLenient.runDetection.startSpeedThreshold {
+            return "Super Lenient"
+        } else if config.runDetection.startSpeedThreshold == TrackingConfiguration.default.runDetection.startSpeedThreshold &&
+                  config.validation.minDescent == 20.0 {
+            return "Default"
+        } else if config.validation.minDuration == 15.0 {
+            return "High Accuracy"
+        } else if config.locationFiltering.distanceFilter == 10.0 {
+            return "Battery Saver"
+        } else {
+            return "Custom"
+        }
+    }
+
     // New method to start location tracking (called on init)
     private func startLocationTracking() {
         locationManager.startUpdatingLocation()
@@ -156,7 +228,7 @@ class TrackingManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         lastProcessedLocation = nil
 
-        TrackingEvent.sessionStarted(config: "default").log(with: logger)
+        TrackingEvent.sessionStarted(config: getCurrentConfigName()).log(with: logger)
     }
 
     func stopRecording() {

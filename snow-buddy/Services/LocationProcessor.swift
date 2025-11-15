@@ -211,8 +211,44 @@ class LocationProcessor {
     func calculateSpeed(from: ProcessedLocation, to: ProcessedLocation) -> Double {
         let dt = to.timestamp.timeIntervalSince(from.timestamp)
 
+        // Filter out duplicate or near-duplicate timestamps
+        guard dt > 0 else {
+            // Exact duplicate timestamp or backward time - skip this reading
+            logger?.warning(
+                "Speed",
+                "Duplicate or invalid timestamp detected",
+                metadata: [
+                    "time_delta_s": dt,
+                    "from_timestamp": from.timestamp.description,
+                    "to_timestamp": to.timestamp.description
+                ]
+            )
+            return speedHistory.last ?? 0.0
+        }
+
         guard dt >= speedConfig.minTimeDelta else {
             // Time delta too small, return last known speed or 0
+            TrackingEvent.locationFiltered(
+                reason: "Time delta too small",
+                accuracy: dt
+            ).log(with: logger)
+            return speedHistory.last ?? 0.0
+        }
+
+        // Calculate distance first to validate before speed calculation
+        let distance = distance3D(from: from.clLocation, to: to.clLocation)
+
+        // Validate distance is realistic BEFORE calculating speed
+        guard isDistanceRealistic(distance) else {
+            logger?.warning(
+                "Speed",
+                "GPS jump detected - distance unrealistic, using last speed",
+                metadata: [
+                    "distance_m": distance,
+                    "time_delta_s": dt,
+                    "would_be_speed_kmh": (distance / dt) * 3.6
+                ]
+            )
             return speedHistory.last ?? 0.0
         }
 
@@ -228,9 +264,27 @@ class LocationProcessor {
             lastSpeedSource = source
         } else {
             // Fallback to calculated speed
-            let distance = distance3D(from: from.clLocation, to: to.clLocation)
             instantSpeed = max(0, distance / dt)
             lastSpeedSource = .calculated
+        }
+
+        // Sanity check: Maximum realistic skiing/snowboarding speed
+        // World record skiing speed is ~250 km/h, but typical max is ~130 km/h
+        // We use 150 km/h (41.7 m/s) as a safety margin for GPS errors
+        let maxRealisticSpeed: Double = speedConfig.maxRealisticSpeed ?? 41.7  // 150 km/h default
+
+        guard instantSpeed <= maxRealisticSpeed else {
+            logger?.warning(
+                "Speed",
+                "Unrealistic speed detected - exceeds max threshold, using last speed",
+                metadata: [
+                    "calculated_speed_kmh": instantSpeed * 3.6,
+                    "max_speed_kmh": maxRealisticSpeed * 3.6,
+                    "distance_m": distance,
+                    "time_delta_s": dt
+                ]
+            )
+            return speedHistory.last ?? 0.0
         }
 
         // Add to smoothing window
