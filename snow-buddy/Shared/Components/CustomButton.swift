@@ -11,7 +11,6 @@ struct CustomButton: View {
     var title: String
     var style: CustomButtonStyle = .primary
     var activeBackgroundColor: Color = Color("TertiaryColor")
-    var textColor: Color = .black
     var cornerRadius: CGFloat = 20
     var isDisabled: Bool = false
     var action: () -> Void
@@ -25,6 +24,17 @@ struct CustomButton: View {
             return Color("SecondaryColor")
         case .tertiary:
             return Color("TertiaryColor")
+        }
+    }
+    
+    private var textColor: Color {
+        switch style {
+        case .primary:
+            return .black
+        case .secondary:
+            return .white
+        case .tertiary:
+            return .black
         }
     }
         

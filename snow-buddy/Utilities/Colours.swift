@@ -10,23 +10,23 @@ import SwiftUICore
 
 struct ColorConfig {
     
-    // MARK: - Primary Colors
-    static let white = Color(hex: "FDFFFF")
-    static let grape = Color(hex: "6F2DBD")
-    static let amethyst = Color(hex: "A663CC")
-    static let wisteria = Color(hex: "B298DC")
-    static let cardinal = Color(hex: "CA2B3B")
-    
-    // MARK: - UI Colors (for specific use cases)
-    struct UI {
-        static let headingText = grape
-        static let secondary = amethyst
-        static let tertiary = wisteria
-        static let background = white
-        static let surface = white
-        static let primaryButton = cardinal
-        static let backround = white
-    }
+//    // MARK: - Primary Colors
+//    static let white = Color(hex: "FDFFFF")
+//    static let grape = Color(hex: "6F2DBD")
+//    static let amethyst = Color(hex: "A663CC")
+//    static let wisteria = Color(hex: "B298DC")
+//    static let cardinal = Color(hex: "CA2B3B")
+//    
+//    // MARK: - UI Colors (for specific use cases)
+//    struct UI {
+//        static let headingText = grape
+//        static let secondary = amethyst
+//        static let tertiary = wisteria
+//        static let background = white
+//        static let surface = white
+//        static let primaryButton = cardinal
+//        static let backround = white
+//    }
     
 }
 

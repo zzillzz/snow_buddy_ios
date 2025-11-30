@@ -10,7 +10,7 @@ import SwiftUI
 struct CustomTextField: View {
     var placeholder: String
         @Binding var text: String
-        var borderColor: Color = .purple
+        var borderColor: Color = Color("PrimaryColor")
         var cornerRadius: CGFloat = 20
         
         @FocusState private var isFocused: Bool
