@@ -6,33 +6,32 @@
 //
 
 import SwiftUI
-import MapKit
+@_spi(Experimental) import MapboxMaps
 
 struct RunDetailMapView: View {
     let run: Run
-    
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var selectedMapStyle: MapStyle = .standard(elevation: .realistic)
-    
+
+    @State private var viewport: Viewport
+    @State private var selectedMapStyle: MapboxMapStyle = .standard
+
+    init(run: Run) {
+        self.run = run
+        _viewport = State(initialValue: Self.calculateInitialViewport(for: run))
+    }
+
     var body: some View {
         ZStack {
-            Map(position: $cameraPosition) {
+            Map(viewport: $viewport) {
                 // The run path
                 if run.coordinates.count > 1 {
-                    MapPolyline(coordinates: run.coordinates)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color("PrimaryColor")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
-                        )
+                    PolylineAnnotation(id: "run-path", lineCoordinates: run.coordinates)
+                        .lineColor(StyleColor(UIColor(named: "PrimaryColor") ?? .systemBlue))
+                        .lineWidth(5)
                 }
-                
+
                 // Start point marker
                 if let startPoint = run.routePoints.first {
-                    Annotation("Start", coordinate: startPoint.coordinate) {
+                    MapViewAnnotation(coordinate: startPoint.coordinate) {
                         ZStack {
                             Circle()
                                 .fill(.blue)
@@ -42,11 +41,12 @@ struct RunDetailMapView: View {
                                 .font(.caption)
                         }
                     }
+                    .allowOverlap(true)
                 }
-                
+
                 // End point marker
                 if let endPoint = run.routePoints.last {
-                    Annotation("Finish", coordinate: endPoint.coordinate) {
+                    MapViewAnnotation(coordinate: endPoint.coordinate) {
                         ZStack {
                             Circle()
                                 .fill(.red)
@@ -56,11 +56,12 @@ struct RunDetailMapView: View {
                                 .font(.caption)
                         }
                     }
+                    .allowOverlap(true)
                 }
-                
+
                 // Top speed marker
                 if let topSpeedPoint = run.topSpeedPoint {
-                    Annotation("", coordinate: topSpeedPoint.coordinate) {
+                    MapViewAnnotation(coordinate: topSpeedPoint.coordinate) {
                         VStack(spacing: 4) {
                             ZStack {
                                 Circle()
@@ -73,7 +74,7 @@ struct RunDetailMapView: View {
                                     .foregroundColor(.white)
                                     .font(.system(size: 16, weight: .bold))
                             }
-                            
+
                             // Speed label
                             Text("\(Int(run.topSpeedKmh)) km/h")
                                 .lexendFont(.bold, size: 15)
@@ -87,18 +88,17 @@ struct RunDetailMapView: View {
                                 .shadow(radius: 2)
                         }
                     }
+                    .allowOverlap(true)
                 }
             }
-            .mapStyle(selectedMapStyle)
-            .mapControls {
-                MapCompass()
-                MapPitchToggle()
-                MapUserLocationButton()
-            }
-            .onAppear {
-                centerMapOnRun()
-            }
-            
+            .mapStyle(selectedMapStyle.style)
+            .ornamentOptions(OrnamentOptions(
+                scaleBar: ScaleBarViewOptions(visibility: .hidden),
+                compass: CompassViewOptions(position: .topTrailing),
+                logo: LogoViewOptions(position: .bottomLeading)
+            ))
+            .ignoresSafeArea()
+
             // Map style picker overlay
             VStack {
                 HStack {
@@ -110,64 +110,103 @@ struct RunDetailMapView: View {
             }
         }
     }
-    
-    private func centerMapOnRun() {
-        guard !run.coordinates.isEmpty else { return }
-        
+
+    static func calculateInitialViewport(for run: Run) -> Viewport {
+        guard !run.coordinates.isEmpty else {
+            return .styleDefault
+        }
+
         // Calculate bounding box for the route
         let coordinates = run.coordinates
         var minLat = coordinates[0].latitude
         var maxLat = coordinates[0].latitude
         var minLon = coordinates[0].longitude
         var maxLon = coordinates[0].longitude
-        
+
         for coordinate in coordinates {
             minLat = min(minLat, coordinate.latitude)
             maxLat = max(maxLat, coordinate.latitude)
             minLon = min(minLon, coordinate.longitude)
             maxLon = max(maxLon, coordinate.longitude)
         }
-        
+
+        // Add padding (30%)
+        let latPadding = (maxLat - minLat) * 0.3
+        let lonPadding = (maxLon - minLon) * 0.3
+
         let center = CLLocationCoordinate2D(
             latitude: (minLat + maxLat) / 2,
             longitude: (minLon + maxLon) / 2
         )
-        
-        let span = MKCoordinateSpan(
-            latitudeDelta: (maxLat - minLat) * 1.5, // Add 30% padding
-            longitudeDelta: (maxLon - minLon) * 1.5
-        )
-        
-        withAnimation {
-            cameraPosition = .region(
-                MKCoordinateRegion(center: center, span: span)
-            )
+
+        // Calculate appropriate zoom level
+        let latDelta = (maxLat - minLat) + latPadding
+        let lonDelta = (maxLon - minLon) + lonPadding
+
+        // Approximate zoom level calculation (simplified)
+        let maxDelta = max(latDelta, lonDelta)
+        let zoom = max(1.0, 14.0 - log2(maxDelta / 0.01))
+
+        return .camera(center: center, zoom: zoom, bearing: 0, pitch: 0)
+    }
+}
+
+// Mapbox map style enum
+enum MapboxMapStyle {
+    case standard
+    case satellite
+    case outdoors
+
+    var style: MapStyle {
+        switch self {
+        case .standard:
+            return .standard(lightPreset: .day)
+        case .satellite:
+            return .satellite
+        case .outdoors:
+            return .outdoors
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .standard: return "Standard"
+        case .satellite: return "Satellite"
+        case .outdoors: return "Outdoors"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .standard: return "map"
+        case .satellite: return "globe"
+        case .outdoors: return "mountain.2"
         }
     }
 }
 
 // Map style picker component
 struct MapStylePicker: View {
-    @Binding var selectedStyle: MapStyle
-    
+    @Binding var selectedStyle: MapboxMapStyle
+
     var body: some View {
         Menu {
             Button {
-                selectedStyle = .standard(elevation: .realistic)
+                selectedStyle = .standard
             } label: {
                 Label("Standard", systemImage: "map")
             }
-            
+
             Button {
-                selectedStyle = .hybrid(elevation: .realistic)
-            } label: {
-                Label("Hybrid", systemImage: "map.fill")
-            }
-            
-            Button {
-                selectedStyle = .imagery(elevation: .realistic)
+                selectedStyle = .satellite
             } label: {
                 Label("Satellite", systemImage: "globe")
+            }
+
+            Button {
+                selectedStyle = .outdoors
+            } label: {
+                Label("Outdoors", systemImage: "mountain.2")
             }
         } label: {
             Image(systemName: "map")

@@ -10,7 +10,12 @@ import SwiftData
 
 @main
 struct snow_buddyApp: App {
-    
+
+    init() {
+        // Initialize Mapbox
+        _ = MapboxService.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             AppView()

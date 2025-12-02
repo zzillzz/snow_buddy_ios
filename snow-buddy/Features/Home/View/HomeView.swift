@@ -10,9 +10,11 @@ import SwiftUI
 struct HomeView: View {
     
     @StateObject private var viewModel = HomeViewModel()
+    
     @State var username = "User"
     @State private var selectedTab: Int = 1
     @State private var trackingManager: TrackingManager = TrackingManager()
+    
     @Environment(\.modelContext) private var modelContext
     
     var body: some View {

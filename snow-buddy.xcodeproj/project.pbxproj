@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		62246FBA2EDD975A007314E8 /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 62246FB92EDD975A007314E8 /* MapboxMaps */; };
 		62A981452E77EEC4006834C9 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 62A981442E77EEC4006834C9 /* Auth */; };
 		62A981472E77EEC4006834C9 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 62A981462E77EEC4006834C9 /* Functions */; };
 		62A981492E77EEC4006834C9 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 62A981482E77EEC4006834C9 /* PostgREST */; };
@@ -88,6 +89,7 @@
 				62A9814F2E77EEC4006834C9 /* Supabase in Frameworks */,
 				62A981452E77EEC4006834C9 /* Auth in Frameworks */,
 				62A9814D2E77EEC4006834C9 /* Storage in Frameworks */,
+				62246FBA2EDD975A007314E8 /* MapboxMaps in Frameworks */,
 				62A9814B2E77EEC4006834C9 /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -158,6 +160,7 @@
 				62A9814A2E77EEC4006834C9 /* Realtime */,
 				62A9814C2E77EEC4006834C9 /* Storage */,
 				62A9814E2E77EEC4006834C9 /* Supabase */,
+				62246FB92EDD975A007314E8 /* MapboxMaps */,
 			);
 			productName = "snow-buddy";
 			productReference = 62A981062E77E390006834C9 /* snow-buddy.app */;
@@ -245,6 +248,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				62A981432E77EEC4006834C9 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				62246FB82EDD975A007314E8 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 62A981072E77E390006834C9 /* Products */;
@@ -761,6 +765,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		62246FB82EDD975A007314E8 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios.git";
+			requirement = {
+				kind = exactVersion;
+				version = 11.16.6;
+			};
+		};
 		62A981432E77EEC4006834C9 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
@@ -772,6 +784,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		62246FB92EDD975A007314E8 /* MapboxMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62246FB82EDD975A007314E8 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
+			productName = MapboxMaps;
+		};
 		62A981442E77EEC4006834C9 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 62A981432E77EEC4006834C9 /* XCRemoteSwiftPackageReference "supabase-swift" */;
