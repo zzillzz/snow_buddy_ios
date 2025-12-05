@@ -12,7 +12,7 @@ struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
     
     @State var username = "User"
-    @State private var selectedTab: Int = 1
+    @State private var selectedTab: Int = 2
     @State private var trackingManager: TrackingManager = TrackingManager()
     
     @Environment(\.modelContext) private var modelContext
@@ -21,28 +21,36 @@ struct HomeView: View {
         TabView(selection: $selectedTab) {
             RunListView()
                 .tabItem {
-                    Label("Runs", systemImage: "plus")
+                    Label("History", systemImage: "plus")
                 }
                 .tag(0)
+            
+            FriendsView()
+                .tabItem {
+                    Label("Friends", systemImage: "person.2.fill")
+                }
+                .tag(1)
+            
             DashboardView()
                 .environmentObject(trackingManager)
                 .tabItem{
                     Text("Record")
                     Image("RunTabImage")
                 }
-                .tag(1)
+                .tag(2)
             
             MapView(trackingManager: trackingManager)
                 .tabItem{
                     Label("Map", systemImage: "map")
                 }
+                .tag(3)
             
             SettingsView()
                 .environmentObject(trackingManager)
                 .tabItem {
                     Label("Setting", systemImage: "gear")
                 }
-                .tag(2)
+                .tag(4)
         }
         .appBackground()
         .tint(Color("PrimaryColor"))

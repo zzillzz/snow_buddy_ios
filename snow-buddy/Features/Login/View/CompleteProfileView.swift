@@ -22,7 +22,7 @@ struct CompleteProfileView: View {
                 .padding(.bottom)
                 .padding(.top)
             
-            Text("This is info that people riding with you will be able to see. Feel free to put in a nickname as your username!")
+            Text("This is info that people riding with you will be able to see. You'll also use this to search for other users. Feel free to put in a nickname as your username! Oh yeah, make it unique ^-^")
                 .padding(.bottom)
                 .lexendFont(size: 18)
             
@@ -36,10 +36,6 @@ struct CompleteProfileView: View {
             }
             
             Spacer()
-            
-            Button(action: viewModel.logUserOut) {
-                Text("DEV TOOL: Log User out")
-            }
             
             CustomButton(title: "Complete Profile", action: {
                 let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)

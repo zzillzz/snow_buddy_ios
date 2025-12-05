@@ -64,8 +64,8 @@ struct UserCard: View {
 
 #Preview {
     VStack(spacing: 20) {
-        UserCard(user: User(id: UUID(), email: "rider@example.com", username: "Snow Rider"))
-        UserCard(user: User(id: UUID(), email: "john.doe@example.com", username: nil))
+        UserCard(user: User(id: UUID(), username: "Snow Rider", email: "rider@example.com"))
+        UserCard(user: User(id: UUID(), username: nil, email: "john.doe@example.com"))
         UserCard(user: nil)
     }
     .padding()
