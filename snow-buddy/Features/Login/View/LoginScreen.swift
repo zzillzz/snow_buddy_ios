@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct LoginScreen: View {
-    
+
     @StateObject private var viewModel = LoginViewModel()
-    @State private var alertText = ""
+    @State private var showVerificationScreen = false
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         VStack {
             Image("LogoWithText")
@@ -38,23 +38,23 @@ struct LoginScreen: View {
                 ProgressView()
             }
 
-            if let result = viewModel.loginResult {
-                VStack{
-                    switch result {
-                    case .success:
-                        Text("Success Email Sent")
-                    case .failure(let error):
-                        Text("Failure \(error.localizedDescription)").foregroundStyle(.red)
-                    }
-                }}
-            
+            if case .failure(let error) = viewModel.loginResult {
+                Text("Error: \(error.localizedDescription)")
+                    .foregroundStyle(.red)
+                    .lexendFont(size: 14)
+                    .padding(.top, 8)
+            }
+
         }
         .appBackground()
-        .onOpenURL(perform: {url in
-            Task {
-                viewModel.handleAuthCallback(url: url)
+        .onChange(of: viewModel.emailSent) { oldValue, newValue in
+            if newValue {
+                showVerificationScreen = true
             }
-        })
+        }
+        .fullScreenCover(isPresented: $showVerificationScreen) {
+            EmailVerificationScreen(email: viewModel.email)
+        }
     }
 }
 

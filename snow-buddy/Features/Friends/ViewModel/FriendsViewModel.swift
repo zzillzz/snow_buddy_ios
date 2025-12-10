@@ -72,39 +72,6 @@ class FriendsViewModel: FriendsViewModelProtocol, ObservableObject  {
         return []
     }
     
-//    func sendFriendRequest(to friendUserId: UUID) async {
-//        guard let userId = try? await SupabaseService.shared.getAuthenticatedUser().id
-//        else {
-//            await MainActor.run {
-//                errorMessage = "Unable to send friend request. Please log in again."
-//                showAlert = true
-//            }
-//            return
-//        }
-//
-//        do {
-//            try await FriendsService.shared.sendFriendRequest(from: userId, to: friendUserId)
-//            
-//            await MainActor.run {
-//                successMessage = "Friend request sent!"
-//                showAlert = true
-//                // Optional: Update relationship status or refresh data
-//                // Task { await loadUserData() }
-//            }
-//        } catch let error as FriendRequestError {
-//            await MainActor.run {
-//                errorMessage = error.errorDescription
-//                showAlert = true
-//            }
-//        } catch {
-//            await MainActor.run {
-//                errorMessage = "Failed to send friend request. Please try again."
-//                showAlert = true
-//            }
-//            print("could not send friend request")
-//        }
-//    }
-    
     func sendFriendRequest(to friendUserId: UUID) async {
         guard let userId = try? await SupabaseService.shared.getAuthenticatedUser().id else {
             await MainActor.run {

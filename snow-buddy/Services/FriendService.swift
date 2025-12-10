@@ -55,27 +55,6 @@ class FriendsService {
     }
 
     // MARK: - Friend Requests
-
-    /// Send a friend request to another user
-    //    func sendFriendRequest(from senderId: UUID, to receiverId: UUID) async throws {
-    //        struct FriendRequestInsert: Encodable {
-    //            let sender_id: UUID
-    //            let receiver_id: UUID
-    //            let status: String
-    //        }
-    //
-    //        let request = FriendRequestInsert(
-    //            sender_id: senderId,
-    //            receiver_id: receiverId,
-    //            status: "pending"
-    //        )
-    //
-    //        try await client
-    //            .from("friend_requests")
-    //            .insert(request)
-    //            .execute()
-    //    }
-    // MARK: - Friend Requests
     /// Send a friend request to another user
     /// This will automatically handle re-sending after rejection
     /// - Throws: FriendRequestError with user-friendly messages
@@ -405,11 +384,11 @@ enum FriendRequestError: LocalizedError {
         case .alreadyPending:
             return "Friend request already pending"
         case .alreadyFriends:
-            return "You are already friends with this user"
+            return "You are already friends with this user ^_^"
         case .cannotSendToSelf:
             return "Cannot send friend request to yourself"
         case .friendLimitReached:
-            return "Friend limit reached. Upgrade to premium for unlimited friends."
+            return "Friend limit reached. Upgrade to premium for unlimited friends!"
         case .unknown(let message):
             return message
         }

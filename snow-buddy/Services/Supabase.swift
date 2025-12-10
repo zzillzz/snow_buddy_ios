@@ -38,7 +38,15 @@ class SupabaseService {
     func setUpUserSession(url: URL) async throws {
         try await client.auth.session(from: url)
     }
-    
+
+    func verifyOTP(email: String, token: String) async throws {
+        try await client.auth.verifyOTP(
+            email: email,
+            token: token,
+            type: .email
+        )
+    }
+
     func authStateChange() async -> AsyncStream<
         (
           event: AuthChangeEvent,
