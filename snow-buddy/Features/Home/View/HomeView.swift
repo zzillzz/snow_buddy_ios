@@ -25,9 +25,11 @@ struct HomeView: View {
                 }
                 .tag(0)
             
-            FriendsView()
+            
+            GroupsListView()
+                .environmentObject(trackingManager)
                 .tabItem {
-                    Label("Friends", systemImage: "person.2.fill")
+                    Label("Groups", systemImage: "person.3.fill")
                 }
                 .tag(1)
             
@@ -38,6 +40,7 @@ struct HomeView: View {
                     Image("RunTabImage")
                 }
                 .tag(2)
+
             
             MapView(trackingManager: trackingManager)
                 .tabItem{
@@ -45,12 +48,18 @@ struct HomeView: View {
                 }
                 .tag(3)
             
+            FriendsView()
+                .tabItem {
+                    Label("Friends", systemImage: "person.2.fill")
+                }
+                .tag(4)
+
             SettingsView()
                 .environmentObject(trackingManager)
                 .tabItem {
                     Label("Setting", systemImage: "gear")
                 }
-                .tag(4)
+                .tag(5)
         }
         .appBackground()
         .tint(Color("PrimaryColor"))

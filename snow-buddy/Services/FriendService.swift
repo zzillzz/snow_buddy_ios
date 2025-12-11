@@ -260,7 +260,9 @@ class FriendsService {
             .order("created_at", ascending: false)
             .execute()
 
-        let decoded = try JSONDecoder.supabase.decode(
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(
             [FriendshipResponse].self,
             from: response.data
         )
@@ -412,11 +414,3 @@ enum FriendRequestError: LocalizedError {
     }
 }
 
-// MARK: - JSONDecoder Extension
-extension JSONDecoder {
-    static let supabase: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
-}
