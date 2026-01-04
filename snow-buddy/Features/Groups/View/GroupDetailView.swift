@@ -30,7 +30,11 @@ struct GroupDetailView: View {
                 if let session = activeSession {
                     activeSessionBanner(session)
                 } else {
-                    startSessionButton
+                    PrimaryActionButton(
+                        title: "Start Session",
+                        icon: "play.circle.fill",
+                        action: { showStartSession = true }
+                    )
                 }
 
                 // Members section
@@ -132,26 +136,6 @@ struct GroupDetailView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color("PrimaryContainerColor"))
             )
-        }
-    }
-
-    // MARK: - Start Session Button
-    private var startSessionButton: some View {
-        Button {
-            showStartSession = true
-        } label: {
-            HStack {
-                Image(systemName: "play.circle.fill")
-                    .font(.title3)
-
-                Text("Start Session")
-                    .lexendFont(.semiBold, size: 17)
-            }
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color("PrimaryColor"))
-            .cornerRadius(12)
         }
     }
 

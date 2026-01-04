@@ -8,10 +8,22 @@ Snow Buddy is an iOS application built with SwiftUI that helps snowboarders and 
 
 - **Platform**: iOS
 - **UI Framework**: SwiftUI
-- **Data Persistence**: SwiftData
-- **Backend**: Supabase
+- **Data Persistence**: SwiftData (Local storage only)
+- **Backend**: Supabase (Limited to user accounts, friends, and sessions)
 - **Location Services**: CoreLocation
 - **Language**: Swift
+
+## Data Strategy & Monetization
+
+### Current Approach (Initial Releases)
+- **Free tier only**: No paid subscription tiers in initial releases
+- **Local storage**: All run data is stored exclusively on device using SwiftData
+- **Limited database usage**: Backend (Supabase) is only used for:
+  - User account creation and authentication
+  - Friends management (adding friends, friend lists)
+  - Group sessions (creating and joining sessions)
+  - Real-time location tracking during active group sessions
+- **Privacy-first**: User run history and detailed metrics remain private and local to the device
 
 ## Core Features
 
@@ -132,6 +144,20 @@ The app follows the **MVVM (Model-View-ViewModel)** architecture:
 
 ## Services & Managers
 
+### Data Boundaries
+
+**Local Storage Only (SwiftData)**:
+- All run data (speed, distance, elevation, routes)
+- Run history and personal statistics
+- Individual RoutePoint GPS data
+- User preferences and settings
+
+**Backend Storage (Supabase)**:
+- User accounts and authentication tokens
+- Friends list and friendship relationships
+- Group session metadata
+- Active session location updates (temporary, real-time only)
+
 ### TrackingManager
 Handles real-time location tracking and motion detection for automatic run start/stop detection.
 
@@ -139,7 +165,12 @@ Handles real-time location tracking and motion detection for automatic run start
 Manages run data lifecycle including creating, updating, and querying runs from the local database.
 
 ### Supabase Service
-Handles backend communication for user authentication and data synchronization.
+Handles limited backend communication for:
+- User authentication and account management
+- Friends list synchronization
+- Group session management
+- Real-time location updates during active sessions
+- **Note**: Run data is NOT synced to the backend - all runs remain local to the device
 
 ## Development Notes
 
@@ -159,9 +190,11 @@ Handles backend communication for user authentication and data synchronization.
 ## Common Development Tasks
 
 ### Working with Runs
-- Run data is persisted locally using SwiftData
+- Run data is persisted **exclusively locally** using SwiftData - never synced to backend
 - Access run data through `RunManager` service
 - Run calculations (speed, distance, slope) are computed properties on the `Run` model
+- All run history, metrics, and route data remain private on the user's device
+- Consider iCloud backup implications for user data portability
 
 ### Location Tracking
 - Location services are abstracted through `LocationManagerProtocol`
@@ -184,9 +217,18 @@ Handles backend communication for user authentication and data synchronization.
 
 ## Future Considerations
 
-When implementing social features (friends, groups):
+### Social Features (Friends, Groups)
 - Consider real-time location sharing privacy and permissions
 - Design friend invitation and acceptance flow
 - Plan group management and visibility settings
 - Think about notification system for friend activities
-- Consider offline functionality and data sync strategies
+- Location sharing only during active sessions - no persistent tracking
+
+### Data Strategy Evolution
+- **Current**: All runs stored locally, free for all users
+- **Future possibilities** (not in initial releases):
+  - Optional cloud backup/sync for run data
+  - Premium tiers with additional features
+  - Cross-device sync capabilities
+- **Maintain backwards compatibility**: Existing local data should always remain accessible
+- **Privacy-first approach**: Any future cloud sync must be opt-in and clearly communicated

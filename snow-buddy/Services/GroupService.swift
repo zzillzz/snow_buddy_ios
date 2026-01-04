@@ -82,20 +82,41 @@ class GroupService {
         name: String,
         description: String?,
         maxMembers: Int,
-        isPrivate: Bool
+        isPrivate: Bool,
+        defaultResortId: UUID? = nil
     ) async throws -> UUID {
         struct CreateGroupParams: Encodable {
             let p_name: String
             let p_description: String?
             let p_max_members: Int
             let p_is_private: Bool
+            let p_default_resort_id: UUID?
+
+            // Ensure nil values are encoded as null instead of being omitted
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(p_name, forKey: .p_name)
+                try container.encode(p_description, forKey: .p_description)
+                try container.encode(p_max_members, forKey: .p_max_members)
+                try container.encode(p_is_private, forKey: .p_is_private)
+                try container.encode(p_default_resort_id, forKey: .p_default_resort_id)
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case p_name
+                case p_description
+                case p_max_members
+                case p_is_private
+                case p_default_resort_id
+            }
         }
 
         let params = CreateGroupParams(
             p_name: name,
             p_description: description,
             p_max_members: maxMembers,
-            p_is_private: isPrivate
+            p_is_private: isPrivate,
+            p_default_resort_id: defaultResortId
         )
 
         do {
@@ -123,9 +144,11 @@ class GroupService {
             let updated_at: Date
             let max_members: Int
             let is_private: Bool
+            let default_resort_id: UUID?
             let member_count: [CountWrapper]
+            let default_resort: Resort?
         }
-        
+
         struct CountWrapper: Decodable {
             let count: Int
         }
@@ -136,7 +159,8 @@ class GroupService {
             .select(
                 """
                 *,
-                member_count:group_members(count)
+                member_count:group_members(count),
+                default_resort:resorts!default_resort_id(*)
                 """
             )
             .in(
@@ -157,7 +181,9 @@ class GroupService {
                 updatedAt: r.updated_at,
                 maxMembers: r.max_members,
                 isPrivate: r.is_private,
-                memberCount: r.member_count.first?.count ?? 0
+                defaultResortId: r.default_resort_id,
+                memberCount: r.member_count.first?.count ?? 0,
+                defaultResort: r.default_resort
             )
         }
     }
@@ -173,12 +199,14 @@ class GroupService {
             let updated_at: Date
             let max_members: Int
             let is_private: Bool
+            let default_resort_id: UUID?
+            let default_resort: Resort?
         }
 
         let groupData: GroupResponse =
             try await client
             .from("groups")
-            .select()
+            .select("*, default_resort:resorts!default_resort_id(*)")
             .eq("id", value: id)
             .single()
             .execute()
@@ -199,8 +227,10 @@ class GroupService {
             updatedAt: groupData.updated_at,
             maxMembers: groupData.max_members,
             isPrivate: groupData.is_private,
+            defaultResortId: groupData.default_resort_id,
             memberCount: memberCount,
-            activeSessionId: activeSessionId
+            activeSessionId: activeSessionId,
+            defaultResort: groupData.default_resort
         )
     }
 

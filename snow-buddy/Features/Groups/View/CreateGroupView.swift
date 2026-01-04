@@ -15,6 +15,7 @@ struct CreateGroupView: View {
     @State private var description = ""
     @State private var isPrivate = false
     @State private var maxMembers = 8
+    @State private var selectedResort: Resort?
     @State private var isCreating = false
 
     var body: some View {
@@ -32,6 +33,19 @@ struct CreateGroupView: View {
                 } header: {
                     Text("Group Details")
                         .lexendFont(.semiBold, size: 14)
+                }
+
+                Section {
+                    ResortPickerField(
+                        selectedResort: $selectedResort,
+                        viewModel: viewModel
+                    )
+                } header: {
+                    Text("Resort")
+                        .lexendFont(.semiBold, size: 14)
+                } footer: {
+                    Text("Set a default resort for this group. Sessions can be at any resort.")
+                        .lexendFont(.regular, size: 12)
                 }
 
                 Section {
@@ -60,25 +74,26 @@ struct CreateGroupView: View {
                         .lexendFont(.regular, size: 12)
                 }
 
-                Section {
-                    Button {
-                        createGroup()
-                    } label: {
-                        if isCreating {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle())
-                                Spacer()
-                            }
-                        } else {
-                            Text("Create Group")
-                                .lexendFont(.semiBold, size: 16)
-                                .frame(maxWidth: .infinity)
-                        }
+                if isCreating {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                        Spacer()
                     }
-                    .disabled(name.isEmpty || isCreating)
+                    .padding()
+                    .listRowBackground(Color.clear)
+                } else {
+                    PrimaryActionButton(
+                        title: "Create Group",
+                        icon: "plus.circle.fill"
+                    ) {
+                        createGroup()
+                    }
+                    .disabled(name.isEmpty)
+                    .listRowBackground(Color.clear)
                 }
+
             }
             .navigationTitle("New Group")
             .navigationBarTitleDisplayMode(.inline)
@@ -98,17 +113,33 @@ struct CreateGroupView: View {
 
         Task {
             do {
+                print("🔵 CreateGroupView: Starting group creation")
+                print("🔵 Name: \(name)")
+                print("🔵 Description: \(description.isEmpty ? "nil" : description)")
+                print("🔵 MaxMembers: \(maxMembers)")
+                print("🔵 IsPrivate: \(isPrivate)")
+                print("🔵 DefaultResortId: \(selectedResort?.id.uuidString ?? "nil")")
+
                 try await viewModel.createGroup(
                     name: name,
                     description: description.isEmpty ? nil : description,
                     maxMembers: maxMembers,
-                    isPrivate: isPrivate
+                    isPrivate: isPrivate,
+                    defaultResortId: selectedResort?.id
                 )
+
+                print("✅ CreateGroupView: Group created successfully")
                 await MainActor.run {
                     isCreating = false
-                    dismiss()
+                    // Delay dismiss to avoid alert presentation conflict
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        dismiss()
+                    }
                 }
             } catch {
+                print("❌ CreateGroupView: Error creating group: \(error)")
+                print("❌ Error details: \(error.localizedDescription)")
                 await MainActor.run {
                     isCreating = false
                 }

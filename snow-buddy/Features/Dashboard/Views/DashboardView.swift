@@ -8,15 +8,16 @@
 import SwiftUI
 
 struct DashboardView: View {
-    
+
     @EnvironmentObject var trackingManager: TrackingManager
     @StateObject private var viewModel = HomeViewModel()
     @State var username = "AReallylongusernamehere"
-    
+    @State private var showSettings = false
+
     var lastRun: Run? {
         trackingManager.completedRuns.last
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
@@ -31,14 +32,29 @@ struct DashboardView: View {
                                     .lexendFont(.extraBold, size: 20)
                                 RunCard(run: run)
                             }
-                            
+
                         }
                     }.buttonStyle(.plain)
                 }
-                
+
             }
             .padding()
             .appBackground()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gear")
+                            .font(.title3)
+                            .foregroundColor(Color("PrimaryColor"))
+                    }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+                    .environmentObject(trackingManager)
+            }
             .task {
                 await viewModel.loadUser()
                 if let userName = viewModel.user?.username {

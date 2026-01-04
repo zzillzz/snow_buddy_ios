@@ -31,24 +31,27 @@ struct SpeedTrackingView: View {
                     title: "Average Speed",
                     value: "\(Int(trackingManager.averageSpeed * 3.6)) km/h",
                 )
-                
+
                 StatCard(
                     title: "Max Speed",
                     value: "\(Int(trackingManager.topSpeed * 3.6)) km/h")
             }
-            
-            CustomButton(
-                title: trackingManager.isRecording ? "Stop Recording" : "Start Recording",
-                action: {
-                    if trackingManager.isRecording {
-                        trackingManager.stopRecording()
-                    } else {
-                        trackingManager.startRecording()
-                    }
-                },
-                isActive: trackingManager.isRecording
-                
-            )
+
+            if trackingManager.isRecording {
+                SecondaryActionButton(
+                    title: "Stop Recording",
+                    icon: "stop.circle.fill"
+                ) {
+                    trackingManager.stopRecording()
+                }
+            } else {
+                PrimaryActionButton(
+                    title: "Start Recording",
+                    icon: "play.circle.fill"
+                ) {
+                    trackingManager.startRecording()
+                }
+            }
         }
     }
 }

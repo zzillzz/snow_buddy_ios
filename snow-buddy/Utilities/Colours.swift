@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUICore
+import UIKit
 
 struct ColorConfig {
     
@@ -55,6 +56,20 @@ extension Color {
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+
+    /// Adaptive color: white in dark mode, black in light mode
+    static var adaptive: Color {
+        Color(uiColor: UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark ? .white : .black
+        })
+    }
+
+    /// Adaptive inverse color: black in dark mode, white in light mode
+    static var adaptiveInverse: Color {
+        Color(uiColor: UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark ? .black : .white
+        })
     }
 }
 

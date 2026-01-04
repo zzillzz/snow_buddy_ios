@@ -6,13 +6,13 @@
 //
 
 import SwiftUI
-import MapKit
+@_spi(Experimental) import MapboxMaps
 
 struct GroupSessionMapView: View {
     @StateObject var viewModel: GroupSessionViewModel
     let session: GroupSession
 
-    @State private var region: MKCoordinateRegion
+    @State private var viewport: Viewport
     @State private var selectedParticipant: ParticipantLocation?
     @State private var showLeaveConfirmation = false
     @State private var showEndConfirmation = false
@@ -26,19 +26,23 @@ struct GroupSessionMapView: View {
             wrappedValue: GroupSessionViewModel(trackingManager: trackingManager)
         )
 
-        // Initialize map region centered on resort
+        // Initialize viewport centered on resort
         if let resort = session.resort {
-            _region = State(
-                initialValue: MKCoordinateRegion(
+            _viewport = State(
+                initialValue: .camera(
                     center: resort.coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    zoom: 13,
+                    bearing: 0,
+                    pitch: 0
                 )
             )
         } else {
-            _region = State(
-                initialValue: MKCoordinateRegion(
+            _viewport = State(
+                initialValue: .camera(
                     center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    zoom: 13,
+                    bearing: 0,
+                    pitch: 0
                 )
             )
         }
@@ -46,20 +50,41 @@ struct GroupSessionMapView: View {
 
     var body: some View {
         ZStack {
-            // Map with participant pins
-            Map(
-                coordinateRegion: $region,
-                annotationItems: viewModel.participants
-            ) { participant in
-                MapAnnotation(coordinate: participant.coordinate) {
-                    Button {
-                        selectedParticipant = participant
-                    } label: {
-                        ParticipantPin(participant: participant)
+            // Mapbox Map
+            MapReader { proxy in
+                Map(viewport: $viewport) {
+                    // User location puck
+                    Puck2D(bearing: .heading)
+                        .showsAccuracyRing(true)
+                }
+                .mapStyle(.standard(lightPreset: .day))
+                .ornamentOptions(OrnamentOptions(
+                    scaleBar: ScaleBarViewOptions(visibility: .hidden),
+                    compass: CompassViewOptions(position: .topTrailing),
+                    logo: LogoViewOptions(position: .bottomLeading)
+                ))
+                .ignoresSafeArea()
+                .onAppear {
+                    if let mapboxMap = proxy.map {
+                        updateParticipantAnnotations(on: mapboxMap)
                     }
                 }
+                .onChange(of: viewModel.participants.count) { oldCount, newCount in
+                    print("🔄 Participants count changed from \(oldCount) to \(newCount)")
+                    if let mapboxMap = proxy.map {
+                        updateParticipantAnnotations(on: mapboxMap)
+                    }
+                }
+                .onChange(of: viewModel.participants.map { "\($0.id)-\($0.coordinate.latitude)-\($0.coordinate.longitude)" }.joined()) { _, _ in
+                    print("🔄 Participant locations changed")
+                    if let mapboxMap = proxy.map {
+                        updateParticipantAnnotations(on: mapboxMap)
+                    }
+                }
+                .onChange(of: viewModel.isSharingLocation) { _, isSharing in
+                    print("🔄 Location sharing changed to: \(isSharing)")
+                }
             }
-            .ignoresSafeArea()
 
             // Overlay UI
             VStack {
@@ -208,8 +233,13 @@ struct GroupSessionMapView: View {
         Button {
             selectedParticipant = participant
             // Center map on participant
-            withAnimation {
-                region.center = participant.coordinate
+            withViewportAnimation(.easeInOut(duration: 0.3)) {
+                viewport = .camera(
+                    center: participant.coordinate,
+                    zoom: 15,
+                    bearing: 0,
+                    pitch: 0
+                )
             }
         } label: {
             VStack(spacing: 6) {
@@ -355,6 +385,65 @@ struct GroupSessionMapView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color("PrimaryContainerColor"))
         )
+    }
+
+    // MARK: - Participant Annotations
+    private func updateParticipantAnnotations(on mapboxMap: MapboxMap) {
+        // Get all existing layers
+        let allLayers = mapboxMap.allLayerIdentifiers.map { $0.id }
+
+        // Remove all participant layers and sources
+        for layerId in allLayers {
+            if layerId.hasPrefix("participant-") {
+                try? mapboxMap.removeLayer(withId: layerId)
+                try? mapboxMap.removeSource(withId: layerId)
+            }
+        }
+
+        print("🗺️ Updating participant annotations. Count: \(viewModel.participants.count)")
+
+        // Add new annotations for each participant
+        for participant in viewModel.participants {
+            let annotationId = "participant-\(participant.id)"
+
+            print("📍 Adding participant: \(participant.username) at \(participant.coordinate.latitude), \(participant.coordinate.longitude)")
+
+            // Create point annotation source
+            var source = GeoJSONSource(id: annotationId)
+            source.data = .geometry(.point(Point(participant.coordinate)))
+
+            // Add source
+            do {
+                try mapboxMap.addSource(source)
+            } catch {
+                print("❌ Failed to add source for \(participant.username): \(error)")
+                continue
+            }
+
+            // Create symbol layer for participant
+            var symbolLayer = SymbolLayer(id: annotationId, source: annotationId)
+
+            // Circle background
+            symbolLayer.iconImage = .constant(.name("circle-15"))
+            symbolLayer.iconColor = .constant(StyleColor(participant.isOnline ? .blue : .gray))
+            symbolLayer.iconSize = .constant(2.5)
+
+            // Username text
+            symbolLayer.textField = .constant(participant.username.prefix(2).uppercased())
+            symbolLayer.textColor = .constant(StyleColor(.white))
+            symbolLayer.textSize = .constant(12)
+            symbolLayer.textFont = .constant(["Open Sans Bold", "Arial Unicode MS Bold"])
+            symbolLayer.textOffset = .constant([0, 0])
+            symbolLayer.textAllowOverlap = .constant(true)
+            symbolLayer.iconAllowOverlap = .constant(true)
+
+            // Add layer
+            do {
+                try mapboxMap.addLayer(symbolLayer)
+            } catch {
+                print("❌ Failed to add layer for \(participant.username): \(error)")
+            }
+        }
     }
 }
 

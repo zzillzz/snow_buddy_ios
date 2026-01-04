@@ -17,18 +17,18 @@ struct BuySeasonPassCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Season Pass")
                         .lexendFont(.bold, size: 24)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
 
                     Text("Unlock Premium Features")
                         .lexendFont(.medium, size: 14)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.black.opacity(0.8))
                 }
 
                 Spacer()
 
                 Image(systemName: "star.circle.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(Color("TertiaryColor"))
+                    .foregroundColor(.black)
             }
 
             // Features List
@@ -38,21 +38,10 @@ struct BuySeasonPassCard: View {
             }
             .padding(.vertical, 8)
 
-            Button(action: action) {
-                HStack {
-                    Text("Get Season Pass")
-                        .lexendFont(.bold, size: 16)
-                        .foregroundColor(.black)
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.black)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color("TertiaryColor"))
-                .cornerRadius(12)
-            }
+            TertiaryActionButton(
+                title:"Get Season Pass",
+                icon: "arrow.right",
+                action: action)
         }
         .padding(20)
         .background(
@@ -84,12 +73,12 @@ struct FeatureRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16))
-                .foregroundColor(Color("TertiaryColor"))
+                .foregroundColor(.black)
                 .frame(width: 20)
 
             Text(text)
                 .lexendFont(.medium, size: 14)
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.black.opacity(0.9))
         }
     }
 }

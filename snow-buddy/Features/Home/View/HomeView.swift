@@ -53,13 +53,6 @@ struct HomeView: View {
                     Label("Friends", systemImage: "person.2.fill")
                 }
                 .tag(4)
-
-            SettingsView()
-                .environmentObject(trackingManager)
-                .tabItem {
-                    Label("Setting", systemImage: "gear")
-                }
-                .tag(5)
         }
         .appBackground()
         .tint(Color("PrimaryColor"))

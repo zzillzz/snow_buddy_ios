@@ -23,10 +23,6 @@ struct SettingsView: View {
                     UserCard(user: viewModel.user)
                         .padding(.bottom, 20)
                     
-                    BuySeasonPassCard()
-                        .padding(.bottom, 40)
-                    
-                    
                     VStack(alignment: .leading) {
                         Text("Preferences")
                             .lexendFont(.bold, size: 16)

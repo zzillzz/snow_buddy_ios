@@ -52,11 +52,13 @@ struct GroupModel: Codable, Identifiable, Hashable {
     let updatedAt: Date
     let maxMembers: Int
     let isPrivate: Bool
+    let defaultResortId: UUID?
 
     // Optional: Populated when joining with group_members table
     var memberCount: Int?
     var members: [GroupMember]?
     var activeSessionId: UUID?
+    var defaultResort: Resort?
 
     // MARK: - Coding Keys
     enum CodingKeys: String, CodingKey {
@@ -68,9 +70,11 @@ struct GroupModel: Codable, Identifiable, Hashable {
         case updatedAt = "updated_at"
         case maxMembers = "max_members"
         case isPrivate = "is_private"
+        case defaultResortId = "default_resort_id"
         case memberCount = "member_count"
         case members
         case activeSessionId = "active_session_id"
+        case defaultResort = "default_resort"
     }
 
     // MARK: - Computed Properties
@@ -100,6 +104,16 @@ struct GroupModel: Codable, Identifiable, Hashable {
     /// Has active session
     var hasActiveSession: Bool {
         activeSessionId != nil
+    }
+
+    /// Check if group has a default resort
+    var hasDefaultResort: Bool {
+        defaultResortId != nil
+    }
+
+    /// Default resort name
+    var defaultResortName: String {
+        defaultResort?.name ?? "No default resort"
     }
 
     /// Formatted member count
@@ -245,7 +259,8 @@ extension GroupModel {
         updatedAt: Date(),
         maxMembers: 8,
         isPrivate: false,
-        memberCount: 5,
+        defaultResortId: nil,
+        memberCount: 5
     )
 
     static let premiumSample = GroupModel(
@@ -257,6 +272,7 @@ extension GroupModel {
         updatedAt: Date(),
         maxMembers: 20,
         isPrivate: true,
+        defaultResortId: nil,
         memberCount: 12,
         activeSessionId: UUID()
     )
@@ -270,6 +286,7 @@ extension GroupModel {
         updatedAt: Date(),
         maxMembers: 8,
         isPrivate: false,
+        defaultResortId: nil,
         memberCount: 8
     )
 }

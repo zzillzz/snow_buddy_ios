@@ -57,7 +57,8 @@ class GroupsViewModel: GroupsViewModelProtocol, ObservableObject {
         name: String,
         description: String?,
         maxMembers: Int,
-        isPrivate: Bool
+        isPrivate: Bool,
+        defaultResortId: UUID? = nil
     ) async throws {
         guard !name.isEmpty else {
             await MainActor.run {
@@ -76,7 +77,8 @@ class GroupsViewModel: GroupsViewModelProtocol, ObservableObject {
                 name: name,
                 description: description,
                 maxMembers: maxMembers,
-                isPrivate: isPrivate
+                isPrivate: isPrivate,
+                defaultResortId: defaultResortId
             )
 
             print("✅ Group created with ID: \(groupId)")
