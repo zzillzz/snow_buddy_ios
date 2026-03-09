@@ -34,20 +34,24 @@ struct SpeedTrackingView: View {
 
                 StatCard(
                     title: "Max Speed",
-                    value: "\(Int(trackingManager.topSpeed * 3.6)) km/h")
+                    value: "\(Int(trackingManager.topSpeed * 3.6)) km/h",
+                    cardColor: .primary
+                )
             }
 
             if trackingManager.isRecording {
-                SecondaryActionButton(
+                CustomButton(
                     title: "Stop Recording",
-                    icon: "stop.circle.fill"
+                    icon: "stop.circle.fill",
+                    style: .secondary
                 ) {
                     trackingManager.stopRecording()
                 }
             } else {
-                PrimaryActionButton(
+                CustomButton(
                     title: "Start Recording",
-                    icon: "play.circle.fill"
+                    icon: "play.circle.fill",
+                    style: .tertiary
                 ) {
                     trackingManager.startRecording()
                 }

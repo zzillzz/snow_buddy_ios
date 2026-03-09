@@ -14,38 +14,49 @@ struct LoginScreen: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack {
-            Image("LogoWithText")
-                .padding(.bottom, 40)
-            
-            Text("Welcome")
-                .foregroundStyle(Color("PrimaryColor"))
-                .lexendFont(.bold, size: 40)
-            
-            Text("Login to your account or create a new one to start tracking your runs")
-                .padding(.leading, 40)
-                .padding(.trailing, 40)
-                .multilineTextAlignment(.center)
-                .lexendFont(size: 18)
-            
-            VStack{
-                CustomTextField(placeholder: "email:", text: $viewModel.email)
-                
-                CustomButton(title: "Login In Or Create Account", action: {viewModel.signInButtonTapped()})
-            }.padding(.horizontal, 40)
-            
-            if viewModel.isLoading {
-                ProgressView()
-            }
+        ScrollView {
+            VStack(spacing: 20) {
+                Spacer()
+                    .frame(height: 60)
 
-            if case .failure(let error) = viewModel.loginResult {
-                Text("Error: \(error.localizedDescription)")
-                    .foregroundStyle(.red)
-                    .lexendFont(size: 14)
-                    .padding(.top, 8)
-            }
+                MascotImage(maxWidth: 200)
+                    .padding(.bottom, 20)
 
+                Text("Welcome")
+                    .foregroundStyle(Color("PrimaryColor"))
+                    .lexendFont(.bold, size: 40)
+
+                Text("Login to your account or create a new one to start tracking your runs")
+                    .padding(.horizontal, 40)
+                    .multilineTextAlignment(.center)
+                    .lexendFont(size: 18)
+                    .padding(.bottom, 20)
+
+                VStack(spacing: 16) {
+                    CustomTextField(placeholder: "email:", text: $viewModel.email)
+
+                    CustomButton(title: "Login In Or Create Account", action: {viewModel.signInButtonTapped()})
+                }
+                .padding(.horizontal, 40)
+
+                if viewModel.isLoading {
+                    ProgressView()
+                        .padding(.top, 8)
+                }
+
+                if case .failure(let error) = viewModel.loginResult {
+                    Text("Error: \(error.localizedDescription)")
+                        .foregroundStyle(.red)
+                        .lexendFont(size: 14)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 40)
+                }
+
+                Spacer()
+                    .frame(height: 40)
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
         .appBackground()
         .onChange(of: viewModel.emailSent) { oldValue, newValue in
             if newValue {

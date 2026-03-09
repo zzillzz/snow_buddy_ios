@@ -11,13 +11,13 @@ struct GroupDetailView: View {
     let group: GroupModel
     @ObservedObject var viewModel: GroupsViewModel
     @EnvironmentObject var trackingManager: TrackingManager
+    @EnvironmentObject var sessionCoordinator: SessionCoordinator
 
     @State private var members: [GroupMember] = []
     @State private var activeSession: GroupSession?
     @State private var showStartSession = false
     @State private var showAddMembers = false
     @State private var isLoadingMembers = false
-    @State private var sessionViewModel: GroupSessionViewModel?
     @State private var canManageMembers = false
 
     var body: some View {
@@ -30,9 +30,10 @@ struct GroupDetailView: View {
                 if let session = activeSession {
                     activeSessionBanner(session)
                 } else {
-                    PrimaryActionButton(
+                    CustomButton(
                         title: "Start Session",
                         icon: "play.circle.fill",
+                        style: .primary,
                         action: { showStartSession = true }
                     )
                 }
@@ -65,6 +66,7 @@ struct GroupDetailView: View {
         }) {
             ResortSelectionView(group: group, viewModel: viewModel)
                 .environmentObject(trackingManager)
+                .environmentObject(sessionCoordinator)
         }
         .sheet(isPresented: $showAddMembers, onDismiss: {
             Task {
@@ -141,8 +143,28 @@ struct GroupDetailView: View {
 
     // MARK: - Active Session Banner
     private func activeSessionBanner(_ session: GroupSession) -> some View {
-        NavigationLink {
-            GroupSessionMapView(session: session, trackingManager: trackingManager)
+        Button {
+            print("🔘 Active Session banner tapped")
+            Task {
+                // Check if user is already participating to avoid duplicate database insert
+                guard let user = try? await SupabaseService.shared.getAuthenticatedUser(),
+                      let userId = UUID(uuidString: user.id.uuidString) else {
+                    print("❌ Failed to get user ID")
+                    return
+                }
+
+                let isAlreadyParticipating = session.isParticipating(userId)
+
+                // Always call joinSession to set up SessionCoordinator state properly
+                // but skip database insert if already participating
+                do {
+                    print("🔄 \(isAlreadyParticipating ? "Reconnecting to" : "Joining") session: \(session.id)")
+                    try await sessionCoordinator.joinSession(session.id, skipDatabaseInsert: isAlreadyParticipating)
+                    print("✅ Session \(isAlreadyParticipating ? "reconnection" : "join") completed")
+                } catch {
+                    print("❌ Failed to \(isAlreadyParticipating ? "reconnect to" : "join") session: \(error)")
+                }
+            }
         } label: {
             VStack(spacing: 12) {
                 HStack {
@@ -285,19 +307,25 @@ struct GroupDetailView: View {
         members = await viewModel.getGroupMembers(groupId: group.id)
 
         // Check for active session (query database for fresh data)
-        let sessionVM = GroupSessionViewModel(trackingManager: trackingManager)
-        if let session = await sessionVM.getActiveSession(groupId: group.id) {
-            // Load full session details
-            await sessionVM.loadSession(sessionId: session.id)
+        if var session = await sessionCoordinator.getActiveSession(groupId: group.id) {
+            // Load participants for the session to enable client-side duplicate check
+            do {
+                let participants = try await GroupSessionService.shared.getActiveParticipants(sessionId: session.id)
+                session.participants = participants
 
-            await MainActor.run {
-                sessionViewModel = sessionVM
-                activeSession = sessionVM.session
+                await MainActor.run {
+                    activeSession = session
+                }
+            } catch {
+                print("⚠️ Failed to load session participants: \(error)")
+                // Still show session even if participants fail to load
+                await MainActor.run {
+                    activeSession = session
+                }
             }
         } else {
             // No active session
             await MainActor.run {
-                sessionViewModel = nil
                 activeSession = nil
             }
         }

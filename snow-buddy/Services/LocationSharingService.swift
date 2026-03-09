@@ -68,6 +68,8 @@ class LocationSharingService: ObservableObject {
         )
 
         isSharingLocation = true
+        print("📡 Set isSharingLocation to: \(isSharingLocation)")
+
         startLocationUpdateTimer()
 
         print("✅ Started location sharing for session: \(sessionId)")
@@ -148,6 +150,12 @@ class LocationSharingService: ObservableObject {
         guard let userId = currentUserId,
             let username = currentUsername
         else { return }
+
+        // Ensure realtime service is connected before publishing
+        guard realtimeService.isConnected else {
+            print("⏸️ Waiting for realtime channel to connect...")
+            return
+        }
 
         // Publish to realtime channel
         await realtimeService.updateLocation(

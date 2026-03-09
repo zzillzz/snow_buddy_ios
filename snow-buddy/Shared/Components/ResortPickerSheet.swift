@@ -1,25 +1,20 @@
 //
-//  ResortSelectionView.swift
+//  ResortPickerSheet.swift
 //  snow-buddy
 //
-//  Created by Zill-e-Rahim on 10/12/2025.
+//  Created on 11/12/2025.
 //
 
 import SwiftUI
 
-struct ResortSelectionView: View {
-    let group: GroupModel
+struct ResortPickerSheet: View {
+    @Binding var selectedResort: Resort?
     @ObservedObject var viewModel: GroupsViewModel
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var trackingManager: TrackingManager
-    @EnvironmentObject var sessionCoordinator: SessionCoordinator
 
     @State private var searchText = ""
     @State private var resorts: [Resort] = []
     @State private var isLoading = false
-    @State private var isStartingSession = false
-    @State private var errorMessage: String?
-    @State private var showError = false
 
     var body: some View {
         NavigationView {
@@ -43,6 +38,17 @@ struct ResortSelectionView: View {
                     }
                     .lexendFont(.regular, size: 16)
                 }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    if selectedResort != nil {
+                        Button("Clear") {
+                            selectedResort = nil
+                            dismiss()
+                        }
+                        .lexendFont(.regular, size: 16)
+                        .foregroundColor(.red)
+                    }
+                }
             }
             .searchable(text: $searchText, prompt: "Search resorts")
             .task {
@@ -53,11 +59,6 @@ struct ResortSelectionView: View {
                     await loadResorts()
                 }
             }
-            .alert("Error Starting Session", isPresented: $showError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(errorMessage ?? "Failed to start session. Please try again.")
-            }
         }
     }
 
@@ -65,7 +66,7 @@ struct ResortSelectionView: View {
         List {
             ForEach(resorts) { resort in
                 Button {
-                    startSession(at: resort)
+                    selectResort(resort)
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 6) {
@@ -92,17 +93,15 @@ struct ResortSelectionView: View {
 
                         Spacer()
 
-                        if isStartingSession {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                        // Show checkmark for selected resort
+                        if selectedResort?.id == resort.id {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(Color("PrimaryColor"))
                         }
                     }
                     .padding(.vertical, 4)
                 }
-                .disabled(isStartingSession)
             }
         }
         .listStyle(.plain)
@@ -125,47 +124,22 @@ struct ResortSelectionView: View {
     }
 
     // MARK: - Actions
+
     private func loadResorts() async {
         isLoading = true
         resorts = await viewModel.searchResorts(query: searchText)
         isLoading = false
     }
 
-    private func startSession(at resort: Resort) {
-        isStartingSession = true
-
-        Task {
-            do {
-                try await sessionCoordinator.startSession(
-                    groupId: group.id,
-                    resortId: resort.id
-                )
-
-                await MainActor.run {
-                    isStartingSession = false
-                    dismiss()
-                    // Auto-navigation to Map tab happens via HomeView onChange
-                }
-            } catch let error as GroupSessionError {
-                await MainActor.run {
-                    isStartingSession = false
-                    errorMessage = error.errorDescription
-                    showError = true
-                }
-            } catch {
-                await MainActor.run {
-                    isStartingSession = false
-                    errorMessage = "Failed to start session: \(error.localizedDescription)"
-                    showError = true
-                }
-            }
-        }
+    private func selectResort(_ resort: Resort) {
+        selectedResort = resort
+        dismiss()
     }
 }
 
 #Preview {
-    ResortSelectionView(
-        group: GroupModel.sample,
+    ResortPickerSheet(
+        selectedResort: .constant(nil),
         viewModel: GroupsViewModel()
     )
 }

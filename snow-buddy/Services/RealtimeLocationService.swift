@@ -50,6 +50,30 @@ class RealtimeLocationService: ObservableObject {
             // Subscribe to channel first
             try await channel.subscribeWithError()
 
+            // Wait for subscription to fully establish with server
+            // Supabase needs time to confirm subscription before presence tracking works
+            print("⏳ Waiting for channel subscription to complete...")
+
+            // Wait for subscription with timeout
+            var waitTime = 0.0
+            let maxWaitTime = 5.0 // 5 seconds max
+            let checkInterval = 0.5 // Check every 500ms
+
+            while waitTime < maxWaitTime {
+                if channel.status == .subscribed {
+                    print("✅ Channel subscription confirmed after \(waitTime)s")
+                    break
+                }
+                try? await Task.sleep(for: .seconds(checkInterval))
+                waitTime += checkInterval
+            }
+
+            // Final check
+            if channel.status != .subscribed {
+                print("⚠️ Channel subscription not confirmed after \(maxWaitTime)s, status: \(channel.status)")
+                // Continue anyway but log warning
+            }
+
             // Start listening to presence changes
             startListeningToPresence(channel: channel)
 
@@ -57,6 +81,7 @@ class RealtimeLocationService: ObservableObject {
             connectionError = nil
 
             print("✅ Joined realtime channel: \(channelId)")
+            print("✅ Channel is ready for presence tracking")
 
         } catch {
             isConnected = false
@@ -110,8 +135,21 @@ class RealtimeLocationService: ObservableObject {
         username: String,
         batteryLevel: Int
     ) async {
-        guard channel != nil else {
+        guard let channel = channel else {
             print("⚠️ Cannot update location: Not connected to channel")
+            return
+        }
+
+        guard isConnected else {
+            print("⚠️ Cannot update location: Channel not fully subscribed (isConnected = false)")
+            return
+        }
+
+        // Extra safeguard: Check channel status before attempting to track presence
+        guard channel.status == .subscribed else {
+            print("⚠️ Cannot update location: Channel status is \(channel.status), not subscribed")
+            // Mark as not connected so we stop trying
+            isConnected = false
             return
         }
 
@@ -128,15 +166,31 @@ class RealtimeLocationService: ObservableObject {
         ]
 
         do {
-            try await channel?.track(presenceState)
+            try await channel.track(presenceState)
             print("📍 Location updated: \(location.coordinate)")
         } catch {
             print("❌ Failed to update location: \(error)")
+            connectionError = error.localizedDescription
+
+            // If we get a subscription error, mark as not connected
+            if error.localizedDescription.contains("subscribe") {
+                isConnected = false
+                print("🔄 Marked as disconnected due to subscription error")
+            }
         }
     }
 
     /// Mark user as offline (while staying in channel)
     func markOffline() async {
+        guard let channel = channel else { return }
+        guard isConnected else { return }
+
+        // Check channel status before tracking
+        guard channel.status == .subscribed else {
+            print("⚠️ Cannot mark offline: Channel not subscribed")
+            return
+        }
+
         guard let userId = currentUserId,
             let username = participants.first(where: { $0.id == userId })?
                 .username
@@ -148,7 +202,12 @@ class RealtimeLocationService: ObservableObject {
             "is_online": .bool(false),
         ]
 
-        try? await channel?.track(presenceState)
+        do {
+            try await channel.track(presenceState)
+            print("📍 Marked as offline in presence")
+        } catch {
+            print("❌ Failed to mark offline: \(error)")
+        }
     }
 
     // MARK: - Presence Event Handlers

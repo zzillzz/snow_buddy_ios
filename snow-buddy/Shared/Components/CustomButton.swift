@@ -9,13 +9,16 @@ import SwiftUI
 
 struct CustomButton: View {
     var title: String
+    var icon: String? = nil
     var style: CustomButtonStyle = .primary
     var activeBackgroundColor: Color = Color("TertiaryColor")
     var cornerRadius: CGFloat = 20
     var isDisabled: Bool = false
     var action: () -> Void
     var isActive: Bool = false
-    
+
+    @Environment(\.isEnabled) private var isEnabled
+
     private var backgroundColor: Color {
         switch style {
         case .primary:
@@ -23,10 +26,10 @@ struct CustomButton: View {
         case .secondary:
             return Color("SecondaryColor")
         case .tertiary:
-            return Color("TertiaryColor")
+            return Color.adaptive
         }
     }
-    
+
     private var textColor: Color {
         switch style {
         case .primary:
@@ -34,25 +37,36 @@ struct CustomButton: View {
         case .secondary:
             return .white
         case .tertiary:
-            return .black
+            return Color.adaptiveInverse
         }
     }
-        
+
+    private var effectiveDisabled: Bool {
+        isDisabled || !isEnabled
+    }
+
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .foregroundColor(textColor)
-                .lexendFont(.bold, size: 18)
-                .frame(maxWidth: .infinity, minHeight: 50)
+            HStack {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.title3)
+                }
+
+                Text(title)
+                    .lexendFont(.bold, size: 18)
+            }
+            .foregroundColor(effectiveDisabled ? textColor.opacity(0.5) : textColor)
+            .frame(maxWidth: .infinity, minHeight: 50)
         }
         .padding(.horizontal)
-        .background(isDisabled
+        .background(effectiveDisabled
                     ? backgroundColor.opacity(0.5)
                     : (isActive ? activeBackgroundColor : backgroundColor)
         )
         .cornerRadius(cornerRadius)
-        .disabled(isDisabled)
-        .animation(.easeInOut(duration: 0.2), value: isDisabled)
+        .disabled(effectiveDisabled)
+        .animation(.easeInOut(duration: 0.2), value: effectiveDisabled)
         .animation(.easeInOut(duration: 0.2), value: isActive)
     }
 }
@@ -212,11 +226,33 @@ struct RejectRequestButton: View {
 
 #Preview {
     VStack(spacing: 20) {
+        Text("Basic Buttons")
+            .lexendFont(.bold, size: 16)
+
         CustomButton(title: "Login Now", action: {print("Preview Button Pressed")})
 
         CustomButton(title: "Login Now", style: .secondary, action: {print("Preview Button Pressed")})
 
         CustomButton(title: "Login Now", style: .tertiary, action: {print("Preview Button Pressed")})
+
+        Divider()
+
+        Text("Buttons with Icons")
+            .lexendFont(.bold, size: 16)
+
+        CustomButton(title: "Start Session", icon: "play.circle.fill", action: {print("Start Pressed")})
+
+        CustomButton(title: "Cancel", icon: "xmark.circle.fill", style: .secondary, action: {print("Cancel Pressed")})
+
+        CustomButton(title: "Share", icon: "square.and.arrow.up", style: .tertiary, action: {print("Share Pressed")})
+
+        Divider()
+
+        Text("Disabled States")
+            .lexendFont(.bold, size: 16)
+
+        CustomButton(title: "Disabled", icon: "lock.fill", action: {})
+            .disabled(true)
 
         DangerButton(title: "Delete Data", action: {print("Delete Button Pressed")})
 

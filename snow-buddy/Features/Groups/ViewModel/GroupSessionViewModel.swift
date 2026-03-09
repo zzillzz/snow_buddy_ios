@@ -30,7 +30,7 @@ class GroupSessionViewModel: ObservableObject {
     // MARK: - Private Properties
 
     private let sessionService = GroupSessionService.shared
-    private let realtimeService = RealtimeLocationService()
+    let realtimeService = RealtimeLocationService()  // Internal for SessionCoordinator access
     private var locationSharingService: LocationSharingService?
     private let trackingManager: TrackingManager
 
@@ -60,7 +60,11 @@ class GroupSessionViewModel: ObservableObject {
 
         // Subscribe to location sharing service state
         locationSharingService?.$isSharingLocation
-            .assign(to: &$isSharingLocation)
+            .sink { [weak self] newValue in
+                print("📡 GroupSessionViewModel: isSharingLocation changed to \(newValue)")
+                self?.isSharingLocation = newValue
+            }
+            .store(in: &cancellables)
 
         locationSharingService?.$batteryLevel
             .assign(to: &$batteryLevel)
@@ -277,17 +281,21 @@ class GroupSessionViewModel: ObservableObject {
 
     /// Toggle location sharing on/off
     func toggleLocationSharing() async {
+        print("🔄 Toggle called - Current state: \(isSharingLocation)")
+
         guard let sessionId = session?.id,
               let user = try? await SupabaseService.shared.getAuthenticatedUser(),
               let userId = UUID(uuidString: user.id.uuidString),
               let username = user.email?.components(separatedBy: "@").first else {
+            print("⚠️ Toggle failed - Missing session or user info")
             return
         }
 
         if isSharingLocation {
             // Stop sharing
+            print("🔄 Stopping location sharing...")
             await locationSharingService?.stopSharing()
-            print("🛑 Stopped location sharing")
+            print("🛑 Stopped location sharing - New state: \(isSharingLocation)")
         } else {
             // Check battery level first
             if isBatteryLow {
@@ -301,13 +309,15 @@ class GroupSessionViewModel: ObservableObject {
 
             // Start sharing
             do {
+                print("🔄 Starting location sharing...")
                 try await locationSharingService?.startSharing(
                     sessionId: sessionId,
                     userId: userId,
                     username: username
                 )
-                print("▶️ Started location sharing")
+                print("▶️ Started location sharing - New state: \(isSharingLocation)")
             } catch {
+                print("❌ Failed to start location sharing: \(error)")
                 await MainActor.run {
                     alertConfig = AlertConfig(
                         title: "Error",

@@ -38,9 +38,10 @@ struct BuySeasonPassCard: View {
             }
             .padding(.vertical, 8)
 
-            TertiaryActionButton(
-                title:"Get Season Pass",
+            CustomButton(
+                title: "Get Season Pass",
                 icon: "arrow.right",
+                style: .tertiary,
                 action: action)
         }
         .padding(20)

@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "Logo with text.svg",
+      "filename" : "mascot_1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "Logo with text 1.svg",
+      "filename" : "mascot_1 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "Logo with text 2.svg",
+      "filename" : "mascot_1 2.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

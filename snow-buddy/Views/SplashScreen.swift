@@ -12,7 +12,7 @@ struct SplashScreen: View {
         ZStack {
             
             VStack(spacing: 20) {
-                Image("LogoWithText")
+                CustomImage(imageName: "MascotImage1")
                     .font(.system(size: 80))
                     .foregroundColor(.white)
                 

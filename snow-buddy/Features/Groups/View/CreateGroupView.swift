@@ -84,9 +84,10 @@ struct CreateGroupView: View {
                     .padding()
                     .listRowBackground(Color.clear)
                 } else {
-                    PrimaryActionButton(
+                    CustomButton(
                         title: "Create Group",
-                        icon: "plus.circle.fill"
+                        icon: "plus.circle.fill",
+                        style: .primary
                     ) {
                         createGroup()
                     }

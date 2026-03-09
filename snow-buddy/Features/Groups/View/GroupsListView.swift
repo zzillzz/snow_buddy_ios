@@ -11,10 +11,12 @@ struct GroupsListView: View {
     @StateObject private var viewModel = GroupsViewModel()
     @State private var showCreateGroup = false
     @EnvironmentObject var trackingManager: TrackingManager
+    @EnvironmentObject var sessionCoordinator: SessionCoordinator
 
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading, spacing: 16) {
+            
+            VStack(spacing: 16) {
                 // Page Heading
                 PageHeading(text: "Groups")
 
@@ -68,6 +70,7 @@ struct GroupsListView: View {
                     NavigationLink {
                         GroupDetailView(group: group, viewModel: viewModel)
                             .environmentObject(trackingManager)
+                            .environmentObject(sessionCoordinator)
                     } label: {
                         GroupCard(group: group)
                     }
